@@ -36,7 +36,10 @@
   <java-symbol type="integer" name="config_backKillTimeout" />
   <java-symbol type="string" name="app_killed_message" />
 
-  <!-- AOKP custom system animations -->
+  <!-- Shortcut actions -->
+  <java-symbol type="drawable" name="ic_shortcut_action_pie" />
+
+    <!-- AOKP custom system animations -->
   <java-symbol type="string" name="action_null"/>
   <java-symbol type="string" name="animation_fade"/>
   <java-symbol type="string" name="animation_slide_left"/>
@@ -82,5 +85,8 @@
   <!-- Last app switch animations -->
   <java-symbol type="anim" name="last_app_in" />
   <java-symbol type="anim" name="last_app_out" />
+
+  <java-symbol type="string" name="disable_navigation_pie_error" />
+  <java-symbol type="string" name="disable_pie_navigation_error" />
 
 </resources>

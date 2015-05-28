@@ -953,6 +953,7 @@ public class WindowManagerService extends IWindowManager.Stub
         // Load hardware rotation from prop
         mSfHwRotation = android.os.SystemProperties.getInt("ro.sf.hwrotation",0) / 90;
         ThemeUtils.registerThemeChangeReceiver(mContext, mThemeChangeReceiver);
+
         updateCircularDisplayMaskIfNeeded();
         showEmulatorDisplayOverlayIfNeeded();
     }
@@ -5741,6 +5742,17 @@ public class WindowManagerService extends IWindowManager.Stub
     @Override
     public void shutdown(boolean confirm) {
         ShutdownThread.shutdown(getUiContext(), confirm);
+    }
+
+    //// Called by window manager policy.  Not exposed externally.
+    //@Override
+    //public void rebootTile() {
+        //ShutdownThread.reboot(mContext, null, true);
+    //}
+
+    @Override
+    public void toggleGlobalMenu() {
+        mPolicy.toggleGlobalMenu();
     }
 
     // Called by window manager policy.  Not exposed externally.
