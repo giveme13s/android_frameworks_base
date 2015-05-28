@@ -1244,14 +1244,9 @@ public final class Settings {
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_COUNT);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_DELAY_MS);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_TIMEOUT_MS);
-            MOVED_TO_SECURE.add(Secure.VOLUME_LINK_NOTIFICATION);
-            for (String s : Secure.NAVIGATION_RING_TARGETS) {
-                MOVED_TO_SECURE.add(s);
-
 
             // At one time in System, then Global, but now back in Secure
             MOVED_TO_SECURE.add(Secure.INSTALL_NON_MARKET_APPS);
-            }
         }
 
         private static final HashSet<String> MOVED_TO_GLOBAL;
@@ -4047,6 +4042,13 @@ public final class Settings {
          * @hide
          */
         public static final String PIE_TRIGGER_SENSITIVITY = "pie_trigger_sensitivity";
+
+        /**
+         * Boolean value whether to link ringtone and notification volume
+         *
+         * @hide
+         */
+        public static final String VOLUME_LINK_NOTIFICATION = "volume_link_notification";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
