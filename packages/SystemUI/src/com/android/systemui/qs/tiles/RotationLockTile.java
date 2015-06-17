@@ -16,7 +16,9 @@
 
 package com.android.systemui.qs.tiles;
 
+import android.content.Intent;
 import android.content.res.Configuration;
+import android.provider.Settings;
 
 import com.android.systemui.R;
 import com.android.systemui.qs.QSTile;
@@ -25,6 +27,10 @@ import com.android.systemui.statusbar.policy.RotationLockController.RotationLock
 
 /** Quick settings tile: Rotation **/
 public class RotationLockTile extends QSTile<QSTile.BooleanState> {
+    private static final Intent DISPLAY_SETTINGS = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
+    private static final Intent DISPLAY_ROTATION_SETTINGS =
+            new Intent("android.settings.DISPLAY_ROTATION_SETTINGS");
+
     private final AnimationIcon mPortraitToAuto
             = new AnimationIcon(R.drawable.ic_portrait_to_auto_rotate_animation);
     private final AnimationIcon mAutoToPortrait
@@ -37,9 +43,14 @@ public class RotationLockTile extends QSTile<QSTile.BooleanState> {
 
     private final RotationLockController mController;
 
+    private final boolean mAdvancedMode;
+
     public RotationLockTile(Host host) {
         super(host);
         mController = host.getRotationLockController();
+
+        mAdvancedMode = Settings.Secure.getInt(mContext.getContentResolver(),
+                Settings.Secure.ADVANCED_MODE, 1) == 1;
     }
 
     @Override
@@ -62,6 +73,24 @@ public class RotationLockTile extends QSTile<QSTile.BooleanState> {
         final boolean newState = !mState.value;
         mController.setRotationLocked(newState);
         refreshState(newState ? UserBoolean.USER_TRUE : UserBoolean.USER_FALSE);
+    }
+
+    @Override
+    protected void handleSecondaryClick() {
+        if (!mAdvancedMode) {
+            mHost.startSettingsActivity(DISPLAY_SETTINGS);
+        } else {
+            mHost.startSettingsActivity(DISPLAY_ROTATION_SETTINGS);
+        }
+    }
+
+    @Override
+    protected void handleLongClick() {
+        if (!mAdvancedMode) {
+            mHost.startSettingsActivity(DISPLAY_SETTINGS);
+        } else {
+            mHost.startSettingsActivity(DISPLAY_ROTATION_SETTINGS);
+        }
     }
 
     @Override
