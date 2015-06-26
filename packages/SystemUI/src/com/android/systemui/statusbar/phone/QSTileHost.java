@@ -34,6 +34,7 @@ import com.android.internal.util.du.QSConstants;
 import com.android.internal.util.du.QSUtils;
 import com.android.systemui.R;
 import com.android.systemui.qs.QSTile;
+import com.android.systemui.qs.tiles.AdbOverNetworkTile;
 import com.android.systemui.qs.tiles.AirplaneModeTile;
 import com.android.systemui.qs.tiles.ApnTile;
 import com.android.systemui.qs.tiles.AmbientDisplayTile;
@@ -43,6 +44,7 @@ import com.android.systemui.qs.tiles.BrightnessTile;
 import com.android.systemui.qs.tiles.CastTile;
 import com.android.systemui.qs.tiles.CellularTile;
 import com.android.systemui.qs.tiles.ColorInversionTile;
+import com.android.systemui.qs.tiles.CompassTile;
 import com.android.systemui.qs.tiles.DataTile;
 import com.android.systemui.qs.tiles.DdsTile;
 import com.android.systemui.qs.tiles.FlashlightTile;
@@ -50,24 +52,25 @@ import com.android.systemui.qs.tiles.HotspotTile;
 import com.android.systemui.qs.tiles.IntentTile;
 import com.android.systemui.qs.tiles.LocationTile;
 import com.android.systemui.qs.tiles.LockscreenToggleTile;
+import com.android.systemui.qs.tiles.LteTile; 
+import com.android.systemui.qs.tiles.NfcTile;
 import com.android.systemui.qs.tiles.NotificationsTile;
 import com.android.systemui.qs.tiles.MusicTile;
 import com.android.systemui.qs.tiles.RoamingTile;
 import com.android.systemui.qs.tiles.RebootTile;
 import com.android.systemui.qs.tiles.RotationLockTile;
+import com.android.systemui.qs.tiles.VisualizerTile; 
 import com.android.systemui.qs.tiles.UsbTetherTile;
 import com.android.systemui.qs.tiles.ScreenshotTile;
 import com.android.systemui.qs.tiles.ScreenrecordTile;
 import com.android.systemui.qs.tiles.SyncTile;
 import com.android.systemui.qs.tiles.ScreenTimeoutTile;
 import com.android.systemui.qs.tiles.HeadsupTile;
-import com.android.systemui.qs.tiles.NavBarTile;
 import com.android.systemui.qs.tiles.AppCircleBarTile;
 import com.android.systemui.qs.tiles.WifiTile;
 import com.android.systemui.settings.CurrentUserTracker;
 import com.android.systemui.statusbar.policy.BluetoothController;
 import com.android.systemui.statusbar.policy.CastController;
-import com.android.systemui.statusbar.policy.FlashlightController;
 import com.android.systemui.statusbar.policy.KeyguardMonitor;
 import com.android.systemui.statusbar.policy.LocationController;
 import com.android.systemui.statusbar.policy.NetworkController;
@@ -106,7 +109,6 @@ public class QSTileHost implements QSTile.Host {
     private final Looper mLooper;
     private final CurrentUserTracker mUserTracker;
     private final VolumeComponent mVolume;
-    private final FlashlightController mFlashlight;
     private final UserSwitcherController mUserSwitcherController;
     private final KeyguardMonitor mKeyguard;
     private final SecurityController mSecurity;
@@ -117,8 +119,7 @@ public class QSTileHost implements QSTile.Host {
             BluetoothController bluetooth, LocationController location,
             RotationLockController rotation, NetworkController network,
             ZenModeController zen, VolumeComponent volume, HotspotController hotspot,
-            CastController cast, FlashlightController flashlight,
-            UserSwitcherController userSwitcher, KeyguardMonitor keyguard,
+            CastController cast, UserSwitcherController userSwitcher, KeyguardMonitor keyguard,
             SecurityController security) {
         mContext = context;
         mStatusBar = statusBar;
@@ -130,7 +131,6 @@ public class QSTileHost implements QSTile.Host {
         mVolume = volume;
         mHotspot = hotspot;
         mCast = cast;
-        mFlashlight = flashlight;
         mUserSwitcherController = userSwitcher;
         mKeyguard = keyguard;
         mSecurity = security;
@@ -238,11 +238,6 @@ public class QSTileHost implements QSTile.Host {
     }
 
     @Override
-    public FlashlightController getFlashlightController() {
-        return mFlashlight;
-    }
-
-    @Override
     public KeyguardMonitor getKeyguardMonitor() {
         return mKeyguard;
     }
@@ -289,8 +284,7 @@ public class QSTileHost implements QSTile.Host {
         switch (tileSpec) {
             case QSConstants.TILE_WIFI:
                 return new WifiTile(this);
-            case QSConstants.TILE_BLUETOOTH:
-                return new BluetoothTile(this);
+            case QSConstants.TILE_BLUETOOTH: return new BluetoothTile(this);
             case QSConstants.TILE_INVERSION:
                 return new ColorInversionTile(this);
             case QSConstants.TILE_CELLULAR:
@@ -315,6 +309,8 @@ public class QSTileHost implements QSTile.Host {
                 return new RoamingTile(this);
             case QSConstants.TILE_DDS:
                 return new DdsTile(this);
+            case QSConstants.TILE_COMPASS:
+                return new CompassTile(this);
             case QSConstants.TILE_APN:
                 return new ApnTile(this);
             case QSConstants.TILE_LOCKSCREEN:
@@ -335,16 +331,22 @@ public class QSTileHost implements QSTile.Host {
                 return new BrightnessTile(this);
             case QSConstants.TILE_BATTERY_SAVER:
                 return new BatterySaverTile(this);
-	    case QSConstants.TILE_HEADS_UP:
-		return new HeadsupTile(this);
-            case QSConstants.TILE_NAVBAR:
-                return new NavBarTile(this);
+            case QSConstants.TILE_HEADS_UP:
+                return new HeadsupTile(this);
             case QSConstants.TILE_APPCIRCLEBAR:
                 return new AppCircleBarTile(this);
             case QSConstants.TILE_AMBIENT_DISPLAY:
                 return new AmbientDisplayTile(this);
             case QSConstants.TILE_MUSIC:
                 return new MusicTile(this);
+            case QSConstants.TILE_NFC:
+                return new NfcTile(this);
+            case QSConstants.TILE_ADB_NETWORK:
+                return new AdbOverNetworkTile(this);
+            case QSConstants.TILE_LTE:
+                return new LteTile(this);
+            case QSConstants.TILE_VISUALIZER:
+                return new VisualizerTile(this); 
             default:
                 throw new IllegalArgumentException("Bad tile spec: " + tileSpec);
         }
