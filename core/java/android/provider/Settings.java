@@ -1798,12 +1798,6 @@ public final class Settings {
         public static final int ADVANCED_SETTINGS_DEFAULT = 0;
 
         /**
-         * Navigation controls to Use
-         * @hide
-         */
-        public static final String NAV_BUTTONS = "nav_buttons";
-
-        /**
          * @deprecated Use {@link android.provider.Settings.Global#AIRPLANE_MODE_ON} instead
          */
         @Deprecated
@@ -2600,14 +2594,9 @@ public final class Settings {
          /**
          * Navigation bar button color
          * @hide
-         */
-         
+         */    
         public static final String NAVIGATION_BAR_TINT = "navigation_bar_tint";        
-        /**
-         * Wether navigation bar is enabled or not
-         * @hide
-         */
-        public static final String NAVIGATION_BAR_SHOW = "navigation_bar_show";
+
          /**
          * Color of the quick settings panel background
          * @hide
@@ -2805,6 +2794,12 @@ public final class Settings {
          * @hide
          */
         public static final String TTY_MODE = "tty_mode";
+
+        /**
+         * Whether national data roaming should be used.
+         * @hide
+         */
+        public static final String MVNO_ROAMING = "mvno_roaming";
 
         /**
          * Whether the sounds effects (key clicks, lid open ...) are enabled. The value is
@@ -3345,102 +3340,6 @@ public final class Settings {
          */
         public static final String FORMAL_TEXT_INPUT = "formal_text_input";
 
-         /**
-          * Action to perform when the key is pressed
-          * 0 - Nothing
-          * 1 - Menu
-          * 2 - App-switch
-          * 3 - Search
-          * 4 - Voice search
-          * 5 - In-app search
-          * 6 - home
-          * 7 - back
-          * 8 - toggle last app
-          * 9 - kill app
-          * 10 - go to sleep
-          * 11 - OmniSwitch recents
-          * @hide
-          */
-        public static final String HARDWARE_KEY_REBINDING = "hardware_key_rebinding";
-
-        /**
-		 * Action to perform when the back key is pressed. (Default is 7)
-		 * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-		 * @hide
-		 */
-        public static final String KEY_BACK_ACTION = "key_back_action";
-
-        /**
-	     * Action to perform when the back key is long-pressed. (Default is 0)
-		 * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-		 * @hide
-		 */
-        public static final String KEY_BACK_LONG_PRESS_ACTION = "key_back_long_press_action";
-
-        /**
-         * Action to perform when the home key is pressed. (Default is 6)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_HOME_ACTION = "key_home_action";
-
-        /**
-         * Action to perform when the home key is long-pressed. (Default is 2)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_HOME_LONG_PRESS_ACTION = "key_home_long_press_action";
-
-        /**
-         * Action to perform when the home key is double taped (Default is 0)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_HOME_DOUBLE_TAP_ACTION = "key_home_double_tap_action";
-
-        /**
-         * Action to perform when the menu key is pressed. (Default is 1)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_MENU_ACTION = "key_menu_action";
-
-        /**
-         * Action to perform when the menu key is long-pressed.
-         * (Default is 0 on devices with a search key, 3 on devices without)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_MENU_LONG_PRESS_ACTION = "key_menu_long_press_action";
-
-        /**
-         * Action to perform when the assistant (search) key is pressed. (Default is 3)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_ASSIST_ACTION = "key_assist_action";
-
-        /**
-         * Action to perform when the assistant (search) key is long-pressed. (Default is 4)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_ASSIST_LONG_PRESS_ACTION = "key_assist_long_press_action";
-
-        /**
-         * Action to perform when the app switch key is pressed. (Default is 2)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_APP_SWITCH_ACTION = "key_app_switch_action";
-
-        /**
-         * Action to perform when the app switch key is long-pressed. (Default is 0)
-         * (See KEY_HOME_LONG_PRESS_ACTION for valid values)
-         * @hide
-         */
-        public static final String KEY_APP_SWITCH_LONG_PRESS_ACTION = "key_app_switch_long_press_action";
-
         /**
          * Volume rocker wake
          * @hide
@@ -3824,12 +3723,6 @@ public final class Settings {
         public static final String CUSTOM_BUTTON_DISABLE_BRIGHTNESS = "custom_button_use_disable_brightness";
 
         /**
-         * Disable hw buttons - actions, brightness, haptic feedback, overflow menu
-         * @hide
-         */
-        public static final String HARDWARE_KEYS_DISABLE = "hardware_keys_disable";
-
-        /**
          * Timeout value for button lights. 0 = disabled
          * @hide
          */
@@ -3968,63 +3861,199 @@ public final class Settings {
         public static final String RECENT_CARD_TEXT_COLOR = "recent_card_text_color";
 
         /**
-         * Whether to show the weather info on the lock screen
+         * Whether custom hardware key rebinding is enabled
          * @hide
          */
-        public static final String LOCK_SCREEN_SHOW_WEATHER = "lock_screen_show_weather";
+        public static final String HARDWARE_KEY_REBINDING = "hardware_key_rebinding";
 
         /**
-         * Whether to show the weather location lock screen
+         * Action to perform when the back key is pressed (default: ACTION_BACK)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_SHOW_WEATHER_LOCATION = "lock_screen_show_weather_location";
+        public static final String KEY_BACK_ACTION = "key_back_action";
 
         /**
-         * Whether to show the weather update timestamp on the lock screen
+         * Action to perform when the back key is long-pressed. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_SHOW_WEATHER_TIMESTAMP = "lock_screen_show_weather_timestamp";
+        public static final String KEY_BACK_LONG_PRESS_ACTION = "key_back_long_press_action";
 
         /**
-         * Weather condition icon on the lock screen
-         * 0: monochrome
-         * 1: colored
-         * 2: vclouds
-         * default: 0
+         * Action to perform when the back key is double tapped. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_WEATHER_CONDITION_ICON = "lock_screen_weather_condition_icon";
+        public static final String KEY_BACK_DOUBLE_TAP_ACTION = "key_back_double_tap_action";
 
         /**
-         * Whether to colorize all weather condition icons on the lock screen
+         * Action to perform when the home key is pressed. (default: ACTION_HOME)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_WEATHER_COLORIZE_ALL_ICONS = "lock_screen_weather_colorize_all_icons";
+        public static final String KEY_HOME_ACTION = "key_home_action";
 
         /**
-         * Color of the text on the lock screen
+         * Action to perform when the home key is long-pressed. (default: ACTION_RECENTS)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_TEXT_COLOR = "lock_screen_text_color";
+        public static final String KEY_HOME_LONG_PRESS_ACTION = "key_home_long_press_action";
 
         /**
-         * Color of the icons on the lock screen
+         * Action to perform when the home key is double taped. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_ICON_COLOR = "lock_screen_icon_color";
+        public static final String KEY_HOME_DOUBLE_TAP_ACTION = "key_home_double_tap_action";
 
         /**
-         * Color of the weather text on the lock screen
+         * Whether pie triggers on the left and right edge should be reduced if IME shows up.
+         * Default = 1 (enabled)
          * @hide
          */
-        public static final String LOCK_SCREEN_WEATHER_TEXT_COLOR = "lock_screen_weather_text_color";
+        public static final String PIE_IME_CONTROL = "pie_ime_control";
 
         /**
-         * Color of the weather condition icons on the lock screen
+         * Action to perform when the menu key is pressed. (default: ACTION_MENU)
+         * (See ButtonsConstants.java for valid values)
          * @hide
          */
-        public static final String LOCK_SCREEN_WEATHER_ICON_COLOR = "lock_screen_weather_icon_color";
-				
+        public static final String KEY_MENU_ACTION = "key_menu_action";
+
+        /**
+         * Action to perform when the menu key is long-pressed.
+         * (Default is ACTION_NULL on devices with a search key, ACTION_SEARCH on devices without)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_MENU_LONG_PRESS_ACTION = "key_menu_long_press_action";
+
+        /**
+         * Action to perform when the menu key is double tapped. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_MENU_DOUBLE_TAP_ACTION = "key_menu_double_tap_action";
+
+        /**
+         * Action to perform when the assistant (search) key is pressed. (default: ACTION_SEARCH)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_ASSIST_ACTION = "key_assist_action";
+
+        /**
+         * Action to perform when the assistant (search) key is long-pressed.
+         * (default: ACTION_VOICE_SEARCH)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_ASSIST_LONG_PRESS_ACTION = "key_assist_long_press_action";
+
+        /**
+         * Action to perform when the assistant (search) key is double tapped.
+         * (default: ACTION_NULL) (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_ASSIST_DOUBLE_TAP_ACTION = "key_assist_double_tap_action";
+
+        /**
+         * Action to perform when the app switch key is pressed. (default: ACTION_RECENTS)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_APP_SWITCH_ACTION = "key_app_switch_action";
+
+        /**
+         * Action to perform when the app switch key is long-pressed. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_APP_SWITCH_LONG_PRESS_ACTION =
+                "key_app_switch_long_press_action";
+
+        /**
+         * Action to perform when the app switch key is double tapped. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_APP_SWITCH_DOUBLE_TAP_ACTION =
+                "key_app_switch_double_tap_action";
+
+        /**
+         * Action to perform when the camera key is pressed. (default: LAUNCH_CAMERA)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_CAMERA_ACTION = "key_camera_action";
+
+        /**
+         * Action to perform when the camera key is long-pressed. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_CAMERA_LONG_PRESS_ACTION =
+                "key_camera_long_press_action";
+
+        /**
+         * Action to perform when the camera key is double tapped. (default: ACTION_NULL)
+         * (See ButtonsConstants.java for valid values)
+         * @hide
+         */
+        public static final String KEY_CAMERA_DOUBLE_TAP_ACTION =
+                "key_camera_double_tap_action";
+
+        /**
+         * Navigation bar button color
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_BUTTON_TINT = "navigation_bar_button_tint";
+
+        /**
+         * Option To Colorize Navigation bar buttons in different modes
+         * 0 = all, 1 = system icons, 2 = system icons + custom user icons
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_BUTTON_TINT_MODE = "navigation_bar_button_tint_mode";
+
+        /**
+         * Navigation bar glow color
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_GLOW_TINT = "navigation_bar_glow_tint";
+
+        /**
+         * Wether navigation bar is enabled or not
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_SHOW = "navigation_bar_show";
+
+        /**
+         * Wether navigation bar is on landscape on the bottom or on the right
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_CAN_MOVE = "navigation_bar_can_move";
+
+        /**
+         * Custom navigation bar intent and action configuration
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_CONFIG = "navigation_bar_config";
+
+        /**
+         * Wether the navbar menu button is on the left/right/both
+         * @hide
+         */
+        public static final String MENU_LOCATION = "menu_location";
+
+        /**
+         * Wether the navbar menu button should show or not
+         * @hide
+         */
+        public static final String MENU_VISIBILITY = "menu_visibility";
+
         /**
          * Whether pie controls are enabled
          * @hide
@@ -4165,17 +4194,32 @@ public final class Settings {
                 "pie_buttons_config_second_layer";
 
         /**
-         * Whether pie triggers on the left and right edge should be reduced if IME shows up.
-         * Default = 1 (enabled)
+         * Whether to show the weather info on the lock screen
          * @hide
          */
-        public static final String PIE_IME_CONTROL = "pie_ime_control";
+        public static final String LOCK_SCREEN_SHOW_WEATHER = "lock_screen_show_weather";
 
         /**
-         * Pie trigger sensitivity
+         * Whether to show the weather location lock screen
          * @hide
          */
-        public static final String PIE_TRIGGER_SENSITIVITY = "pie_trigger_sensitivity";
+        public static final String LOCK_SCREEN_SHOW_WEATHER_LOCATION = "lock_screen_show_weather_location";
+
+        /**
+         * Whether to show the weather update timestamp on the lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_SHOW_WEATHER_TIMESTAMP = "lock_screen_show_weather_timestamp";
+
+        /**
+         * Weather condition icon on the lock screen
+         * 0: monochrome
+         * 1: colored
+         * 2: vclouds
+         * default: 0
+         * @hide
+         */
+        public static final String LOCK_SCREEN_WEATHER_CONDITION_ICON = "lock_screen_weather_condition_icon";
 
         /**
          * Whether to disable the torch when the screen turns off
@@ -4189,6 +4233,24 @@ public final class Settings {
          */
         public static final String DISABLE_TORCH_ON_SCREEN_OFF_DELAY = "disable_torch_on_screen_off_delay";
 
+        /**
+         * Whether to colorize all weather condition icons on the lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_WEATHER_COLORIZE_ALL_ICONS = "lock_screen_weather_colorize_all_icons";
+
+        /**
+         * Color of the weather text on the lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_WEATHER_TEXT_COLOR = "lock_screen_weather_text_color";
+
+        /**
+         * Color of the weather condition icons on the lock screen
+         * @hide
+         */
+        public static final String LOCK_SCREEN_WEATHER_ICON_COLOR = "lock_screen_weather_icon_color";
+				
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
@@ -4523,11 +4585,10 @@ public final class Settings {
             Secure.WIFI_WATCHDOG_PING_TIMEOUT_MS;
 
         /**
-         * boolean value. toggles using arrow key locations on nav bar
-         * as left and right dpad keys
+         * Whether or not to launch default music player when headset is connected
          * @hide
          */
-        public static final String NAVIGATION_BAR_MENU_ARROW_KEYS = "navigation_bar_menu_arrow_keys";
+        public static final String HEADSET_CONNECT_PLAYER = "headset_connect_player";
 
     }
 
@@ -6577,10 +6638,16 @@ public final class Settings {
         public static final String THEME_PREV_BOOT_API_LEVEL = "theme_prev_boot_api_level";
 
         /**
-         * Boolean value whether to link ringtone and notification volume
+         * Whether newly installed apps should run with privacy guard by default
          * @hide
          */
-        public static final String VOLUME_LINK_NOTIFICATION = "volume_link_notification";
+        public static final String PRIVACY_GUARD_DEFAULT = "privacy_guard_default";
+
+        /**
+         * The TCP/IP port to run ADB on, or -1 for USB
+         * @hide
+         */
+        public static final String ADB_PORT = "adb_port";
 
         /**
          * Whether detail view for the location tile is enabled
@@ -6605,18 +6672,6 @@ public final class Settings {
          */
         public static final String ADVANCED_MODE = "advanced_mode";
         
-        /**
-         * Whether newly installed apps should run with privacy guard by default
-         * @hide
-         */
-        public static final String PRIVACY_GUARD_DEFAULT = "privacy_guard_default";
-
-        /**
-         * The TCP/IP port to run ADB on, or -1 for USB
-         * @hide
-         */
-        public static final String ADB_PORT = "adb_port";
-
         /**
          * This are the settings to be backed up.
          *
@@ -8944,6 +8999,12 @@ public final class Settings {
         private static final String[] sIntentProjection = { INTENT };
         private static final String[] sShortcutProjection = { ID, SHORTCUT };
         private static final String sShortcutSelection = SHORTCUT + "=?";
+
+        /**
+         * Enable double tap gesture anywhere on the lock screen put device to sleep
+         * @hide
+         */
+        public static final String DOUBLE_TAP_SLEEP_ANYWHERE = "double_tap_sleep_anywhere";
 
         /**
          * Convenience function to retrieve the bookmarked Intent for a

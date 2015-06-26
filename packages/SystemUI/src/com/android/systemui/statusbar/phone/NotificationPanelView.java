@@ -90,7 +90,6 @@ public class NotificationPanelView extends PanelView implements
     private KeyguardStatusBarView mKeyguardStatusBar;
     private QSContainer mQsContainer;
     private QSPanel mQsPanel;
-    private LinearLayout mTaskManagerPanel;
     private KeyguardStatusView mKeyguardStatusView;
     private ObservableScrollView mScrollView;
     private TextView mClockView;
@@ -199,8 +198,13 @@ public class NotificationPanelView extends PanelView implements
     private int mQsSmartPullDown;
     private boolean mStatusBarLockedOnSecureKeyguard;
     private boolean mDoubleTapToSleepEnabled;
+    private boolean mDoubleTapToSleepAnywhere;
     private int mStatusBarHeaderHeight;
     private GestureDetector mDoubleTapGesture;
+
+    // Task manager
+    private boolean mShowTaskManager;
+    private LinearLayout mTaskManagerPanel;
 
     public NotificationPanelView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -672,6 +676,9 @@ public class NotificationPanelView extends PanelView implements
         if (mDoubleTapToSleepEnabled
                 && mStatusBarState == StatusBarState.KEYGUARD
                 && event.getY() < mStatusBarHeaderHeight) {
+            mDoubleTapGesture.onTouchEvent(event);
+        } else if (mDoubleTapToSleepAnywhere
+                && mStatusBarState == StatusBarState.KEYGUARD) {
             mDoubleTapGesture.onTouchEvent(event);
         }
         resetDownStates(event);
@@ -1372,8 +1379,7 @@ public class NotificationPanelView extends PanelView implements
     }
 
     public void setTaskManagerVisibility(boolean mTaskManagerShowing) {
-        if (Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.ENABLE_TASK_MANAGER, 0) == 1) {
+        if (mShowTaskManager) {
             cancelAnimation();
             boolean expandVisually = mQsExpanded || mStackScrollerOverscrolling;
             mQsPanel.setVisibility(expandVisually && !mTaskManagerShowing
@@ -2071,12 +2077,16 @@ public class NotificationPanelView extends PanelView implements
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.DOUBLE_TAP_SLEEP_GESTURE),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.DOUBLE_TAP_SLEEP_ANYWHERE), false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.STATUS_BAR_LOCKED_ON_SECURE_KEYGUARD),
                     false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.QS_SMART_PULLDOWN),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.ENABLE_TASK_MANAGER), false, this, UserHandle.USER_ALL);
             update();
         }
 
@@ -2104,12 +2114,16 @@ public class NotificationPanelView extends PanelView implements
             mDoubleTapToSleepEnabled = Settings.System.getIntForUser(
                     resolver, Settings.System.DOUBLE_TAP_SLEEP_GESTURE, 1,
                     UserHandle.USER_CURRENT) == 1;
+            mDoubleTapToSleepAnywhere = Settings.System.getIntForUser(resolver,
+                    Settings.System.DOUBLE_TAP_SLEEP_ANYWHERE, 0, UserHandle.USER_CURRENT) == 1;
             mStatusBarLockedOnSecureKeyguard = Settings.Secure.getIntForUser(
                     resolver, Settings.Secure.STATUS_BAR_LOCKED_ON_SECURE_KEYGUARD, 1,
                     UserHandle.USER_CURRENT) == 1;
             mQsSmartPullDown = Settings.System.getIntForUser(
                     resolver, Settings.System.QS_SMART_PULLDOWN, 0,
                     UserHandle.USER_CURRENT);
+            mShowTaskManager = Settings.System.getIntForUser(resolver,
+                    Settings.System.ENABLE_TASK_MANAGER, 0, UserHandle.USER_CURRENT) == 1;
         }
     }
 
