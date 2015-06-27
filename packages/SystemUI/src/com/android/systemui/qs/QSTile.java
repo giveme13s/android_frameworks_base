@@ -23,6 +23,8 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
@@ -102,6 +104,16 @@ public abstract class QSTile<TState extends State> implements Listenable {
 
     public void setCallback(Callback callback) {
         mHandler.obtainMessage(H.SET_CALLBACK, callback).sendToTarget();
+    }
+
+    public boolean isQsCollapsePanelEnabled() {
+        return (Settings.System.getIntForUser(mContext.getContentResolver(),
+            Settings.System.QUICK_SETTINGS_COLLAPSE_PANEL, 0, UserHandle.USER_CURRENT) != 0);
+    }
+
+    public void qsCollapsePanel() {
+        if (!isQsCollapsePanelEnabled()) { return; }
+        mHost.collapsePanels(); /* dismissShade */
     }
 
     public void click() {

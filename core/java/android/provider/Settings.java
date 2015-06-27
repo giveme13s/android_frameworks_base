@@ -3405,6 +3405,12 @@ public final class Settings {
         public static final String MUTE_ANNOYING_NOTIFICATIONS_THRESHOLD = "mute_annoying_notifications_threshold";
 
         /**
+         * Enable double tap gesture anywhere on the lock screen put device to sleep
+         * @hide
+         */
+        public static final String DOUBLE_TAP_SLEEP_ANYWHERE = "double_tap_sleep_anywhere";
+
+        /**
          * Volume key controls ringtone or media sound stream
          *
          * @hide
@@ -3472,7 +3478,13 @@ public final class Settings {
          */
         public static final String STATUS_BAR_CARRIER_COLOR = "status_bar_carrier_color";
 
-        /**
+        /** Whether to collapse panel when quick settings tile is pressed.
+         *
+         * @hide
+         */
+        public static final String QUICK_SETTINGS_COLLAPSE_PANEL = "quick_settings_collapse_panel";
+
+         /**
          * Width of the gesture anywhere trigger.
          * @hide
          */
@@ -8999,12 +9011,6 @@ public final class Settings {
         private static final String[] sIntentProjection = { INTENT };
         private static final String[] sShortcutProjection = { ID, SHORTCUT };
         private static final String sShortcutSelection = SHORTCUT + "=?";
-
-        /**
-         * Enable double tap gesture anywhere on the lock screen put device to sleep
-         * @hide
-         */
-        public static final String DOUBLE_TAP_SLEEP_ANYWHERE = "double_tap_sleep_anywhere";
 
         /**
          * Convenience function to retrieve the bookmarked Intent for a

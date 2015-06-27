@@ -23,7 +23,7 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.Phone;
 
-import com.android.internal.util.cm.QSUtils;
+import com.android.internal.util.du.QSUtils;
 import com.android.systemui.qs.QSTile;
 import com.android.systemui.R;
 
@@ -42,15 +42,16 @@ public class LteTile extends QSTile<QSTile.BooleanState> {
     }
 
     @Override
-    protected void handleLongClick() {
-        super.handleLongClick();
-        mHost.startSettingsActivity(new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS));
-    }
-
-    @Override
     protected void handleClick() {
         toggleLteState();
         refreshState();
+        qsCollapsePanel();
+    }
+
+    @Override
+    protected void handleLongClick() {
+        super.handleLongClick();
+        mHost.startSettingsActivity(new Intent(Settings.ACTION_DATA_ROAMING_SETTINGS));
     }
 
     @Override
@@ -64,6 +65,8 @@ public class LteTile extends QSTile<QSTile.BooleanState> {
             return;
         }
 
+        state.label = mContext.getString(R.string.quick_settings_lte_label);
+
         switch (getCurrentPreferredNetworkMode()) {
             case Phone.NT_MODE_GLOBAL:
             case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
@@ -74,12 +77,27 @@ public class LteTile extends QSTile<QSTile.BooleanState> {
             case Phone.NT_MODE_TD_SCDMA_GSM_WCDMA_LTE:
             case Phone.NT_MODE_TD_SCDMA_WCDMA_LTE:
                 state.visible = true;
-                state.iconId = R.drawable.ic_qs_lte_on;
+                state.value = true;
+                state.icon = ResourceIcon.get(R.drawable.ic_qs_lte_on);
+                state.contentDescription = mContext.getString(
+                        R.string.accessibility_quick_settings_lte_on);
                 break;
             default:
                 state.visible = true;
-                state.iconId = R.drawable.ic_qs_lte_off;
+                state.value = false;
+                state.icon = ResourceIcon.get(R.drawable.ic_qs_lte_off);
+                state.contentDescription = mContext.getString(
+                        R.string.accessibility_quick_settings_lte_off);
                 break;
+        }
+    }
+
+    @Override
+    protected String composeChangeAnnouncement() {
+        if (mState.value) {
+            return mContext.getString(R.string.accessibility_quick_settings_lte_changed_on);
+        } else {
+            return mContext.getString(R.string.accessibility_quick_settings_lte_changed_off);
         }
     }
 

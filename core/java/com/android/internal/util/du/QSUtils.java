@@ -104,7 +104,7 @@ public class QSUtils {
                 || tm.getLteOnGsmMode() != 0;
     }
 
-    private static boolean deviceSupportsDdsSupported(Context context) {
+    public static boolean deviceSupportsDdsSupported(Context context) {
         TelephonyManager tm = (TelephonyManager)
                 context.getSystemService(Context.TELEPHONY_SERVICE);
         return tm.isMultiSimEnabled()
