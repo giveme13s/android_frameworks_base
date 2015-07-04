@@ -231,6 +231,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1274,6 +1275,8 @@ public final class ActivityManagerService extends ActivityManagerNative
     static final int SEND_LOCALE_TO_MOUNT_DAEMON_MSG = 47;
     static final int DISMISS_DIALOG_MSG = 48;
     static final int NOTIFY_TASK_STACK_CHANGE_LISTENERS_MSG = 49;
+    static final int POST_PRIVACY_NOTIFICATION_MSG = 50;
+    static final int CANCEL_PRIVACY_NOTIFICATION_MSG = 51;
 
     static final int FIRST_ACTIVITY_STACK_MSG = 100;
     static final int FIRST_BROADCAST_QUEUE_MSG = 200;
@@ -1830,6 +1833,69 @@ public final class ActivityManagerService extends ActivityManagerNative
                 }
                 break;
             }
+            case POST_PRIVACY_NOTIFICATION_MSG: {
+                INotificationManager inm = NotificationManager.getService();
+                if (inm == null) {
+                    return;
+                }
+
+                ActivityRecord root = (ActivityRecord)msg.obj;
+                ProcessRecord process = root.app;
+                if (process == null) {
+                    return;
+                }
+
+                try {
+                    Context context = mContext.createPackageContext(process.info.packageName, 0);
+                    String text = mContext.getString(R.string.privacy_guard_notification_detail,
+                            context.getApplicationInfo().loadLabel(context.getPackageManager()));
+                    String title = mContext.getString(R.string.privacy_guard_notification);
+
+                    Intent infoIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", root.packageName, null));
+
+                    Notification notification = new Notification();
+                    notification.icon = com.android.internal.R.drawable.stat_notify_privacy_guard;
+                    notification.when = 0;
+                    notification.flags = Notification.FLAG_ONGOING_EVENT;
+                    notification.priority = Notification.PRIORITY_LOW;
+                    notification.defaults = 0;
+                    notification.sound = null;
+                    notification.vibrate = null;
+                    notification.setLatestEventInfo(mContext,
+                            title, text,
+                            PendingIntent.getActivityAsUser(mContext, 0, infoIntent,
+                                    PendingIntent.FLAG_CANCEL_CURRENT, null,
+                                    new UserHandle(root.userId)));
+
+                    try {
+                        int[] outId = new int[1];
+                        inm.enqueueNotificationWithTag("android", "android", null,
+                                R.string.privacy_guard_notification,
+                                notification, outId, root.userId);
+                    } catch (RuntimeException e) {
+                        Slog.w(ActivityManagerService.TAG,
+                                "Error showing notification for privacy guard", e);
+                    } catch (RemoteException e) {
+                    }
+                } catch (NameNotFoundException e) {
+                    Slog.w(TAG, "Unable to create context for privacy guard notification", e);
+                }
+            } break;
+            case CANCEL_PRIVACY_NOTIFICATION_MSG: {
+                INotificationManager inm = NotificationManager.getService();
+                if (inm == null) {
+                    return;
+                }
+                try {
+                    inm.cancelNotificationWithTag("android", null,
+                            R.string.privacy_guard_notification,  msg.arg1);
+                } catch (RuntimeException e) {
+                    Slog.w(ActivityManagerService.TAG,
+                            "Error canceling notification for service", e);
+                } catch (RemoteException e) {
+                }
+            } break;
             }
         }
     };
@@ -3029,9 +3095,9 @@ public final class ActivityManagerService extends ActivityManagerNative
                     debugFlags |= Zygote.DEBUG_ENABLE_JIT;
                 }
             }
-            String genCFIDebugProperty = SystemProperties.get("debug.gencfi");
-            if ("true".equals(genCFIDebugProperty)) {
-                debugFlags |= Zygote.DEBUG_GENERATE_CFI;
+            String genDebugInfoProperty = SystemProperties.get("debug.generate-debug-info");
+            if ("true".equals(genDebugInfoProperty)) {
+                debugFlags |= Zygote.DEBUG_GENERATE_DEBUG_INFO;
             }
             if ("1".equals(SystemProperties.get("debug.jni.logging"))) {
                 debugFlags |= Zygote.DEBUG_ENABLE_JNI_LOGGING;
@@ -7876,7 +7942,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             fos = mGrantFile.startWrite();
 
             XmlSerializer out = new FastXmlSerializer();
-            out.setOutput(fos, "utf-8");
+            out.setOutput(fos, StandardCharsets.UTF_8.name());
             out.startDocument(null, true);
             out.startTag(null, TAG_URI_GRANTS);
             for (UriPermission.Snapshot perm : persist) {
@@ -7911,7 +7977,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         try {
             fis = mGrantFile.openRead();
             final XmlPullParser in = Xml.newPullParser();
-            in.setInput(fis, null);
+            in.setInput(fis, StandardCharsets.UTF_8.name());
 
             int type;
             while ((type = in.next()) != END_DOCUMENT) {
@@ -8911,6 +8977,23 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
     }
 
+    public IBinder getActivityForTask(int task, boolean onlyRoot) {
+        final ActivityStack mainStack = mStackSupervisor.getFocusedStack();
+        synchronized(this) {
+            ArrayList<ActivityStack> stacks = mStackSupervisor.getStacks();
+            for (ActivityStack stack : stacks) {
+                TaskRecord r = stack.taskForIdLocked(task);
+
+                if (r != null && r.getTopActivity() != null) {
+                    return r.getTopActivity().appToken;
+                } else {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+    
     private boolean isLockTaskAuthorized(String pkg) {
         final DevicePolicyManager dpm = (DevicePolicyManager)
                 mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);

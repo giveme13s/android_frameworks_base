@@ -56,6 +56,7 @@ import com.android.systemui.qs.tiles.LteTile;
 import com.android.systemui.qs.tiles.NfcTile;
 import com.android.systemui.qs.tiles.NotificationsTile;
 import com.android.systemui.qs.tiles.MusicTile;
+import com.android.systemui.qs.tiles.PieTile;
 import com.android.systemui.qs.tiles.RoamingTile;
 import com.android.systemui.qs.tiles.RebootTile;
 import com.android.systemui.qs.tiles.RotationLockTile;
@@ -66,6 +67,8 @@ import com.android.systemui.qs.tiles.SyncTile;
 import com.android.systemui.qs.tiles.ScreenTimeoutTile;
 import com.android.systemui.qs.tiles.HeadsupTile;
 import com.android.systemui.qs.tiles.AppCircleBarTile;
+import com.android.systemui.qs.tiles.NavBarTile;
+import com.android.systemui.qs.tiles.SlimFloatsTile;
 import com.android.systemui.qs.tiles.WifiTile;
 import com.android.systemui.settings.CurrentUserTracker;
 import com.android.systemui.statusbar.policy.BluetoothController;
@@ -342,8 +345,14 @@ public class QSTileHost implements QSTile.Host {
                 return new NfcTile(this);
             case QSConstants.TILE_ADB_NETWORK:
                 return new AdbOverNetworkTile(this);
+            case QSConstants.TILE_NAVBAR:
+                return new NavBarTile(this);
+            case QSConstants.TILE_PIE:
+                return new PieTile(this);
             case QSConstants.TILE_LTE:
                 return new LteTile(this);
+            case QSConstants.TILE_SLIM_FLOATS:
+                return new SlimFloatsTile(this);
             default:
                 throw new IllegalArgumentException("Bad tile spec: " + tileSpec);
         }

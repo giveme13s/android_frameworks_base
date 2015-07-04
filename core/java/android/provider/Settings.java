@@ -3567,6 +3567,13 @@ public final class Settings {
         public static final String STATUS_BAR_SHOW_WEATHER = "status_bar_show_weather";
 
         /**
+         * Whether to display the torch option in the power menu
+         *
+         * @hide
+         */
+        public static final String POWERMENU_TORCH = "powermenu_torch";
+
+        /**
          * Whether to display lock in the power menu
          *
          * @hide
@@ -3726,6 +3733,12 @@ public final class Settings {
          * @hide
          */
         public static final String CUSTOM_BUTTON_USE_SCREEN_BRIGHTNESS = "custom_button_use_screen_brightness";
+
+        /**
+         * Disable hw buttons - actions, brightness, haptic feedback, overflow menu
+         * @hide
+         */
+        public static final String HARDWARE_KEYS_DISABLE = "hardware_keys_disable";
 
         /**
          * disable all button brightness (manual and auto mode)
@@ -4206,6 +4219,20 @@ public final class Settings {
                 "pie_buttons_config_second_layer";
 
         /**
+         * Should the storage removed notification be shown
+         *
+         * @hide
+         */
+        public static final String STORAGE_MEDIA_REMOVED_NOTIFICTION = "storage_media_removed_notification";
+
+        /**
+         * Enable ongoing mount notifications for those storage volumes
+         *
+         * @hide
+         */
+        public static final String STORAGE_MOUNT_NOTIFICATION = "storage_mount_notification";
+
+        /**
          * Whether to show the weather info on the lock screen
          * @hide
          */
@@ -4263,6 +4290,12 @@ public final class Settings {
          */
         public static final String LOCK_SCREEN_WEATHER_ICON_COLOR = "lock_screen_weather_icon_color";
 				
+        /**
+         * Option to launch slim actions in floating mode
+         * @hide
+         */
+        public static final String SLIM_ACTION_FLOATS = "slim_action_floats";
+
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
@@ -6662,6 +6695,13 @@ public final class Settings {
         public static final String ADB_PORT = "adb_port";
 
         /**
+         * Whether to display a menu containing 'Wipe data', 'Force close' and other options
+         * in the notification area and in the recent app list
+         * @hide
+         */
+        public static final String DEVELOPMENT_SHORTCUT = "development_shortcut";
+
+        /**
          * Whether detail view for the location tile is enabled
          * @hide
          */
@@ -6737,6 +6777,7 @@ public final class Settings {
             SLEEP_TIMEOUT,
             LOCKSCREEN_QUICK_UNLOCK_CONTROL,
             ADVANCED_REBOOT,
+            DEVELOPMENT_SHORTCUT,
             STATUS_BAR_LOCKED_ON_SECURE_KEYGUARD,
             PRIVACY_GUARD_DEFAULT
         };

@@ -3,16 +3,16 @@
 /**
  * Copyright (c) 2009, The Android Open Source Project
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0 
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  */
 -->
@@ -42,6 +42,14 @@
 
     <!-- Weather string format in expanded statusbar header -->
     <string name="status_bar_expanded_header_weather_format"><xliff:g id="temp">%1$s</xliff:g> - <xliff:g id="condition">%2$s</xliff:g></string>
+
+    <!-- Development shortcuts -->
+    <string name="advanced_dev_option_wipe_app">Wipe app data</string>
+    <string name="advanced_dev_option_force_stop">Force stop</string>
+    <string name="advanced_dev_option_uninstall">Uninstall</string>
+
+    <!-- Battery Saver Dimss -->
+    <string name="battery_saver_dismiss_title">Dismiss</string>
 
     <!-- App circle sidebar -->
     <string name="app_float_maximize_item_title">Maximize</string>
@@ -75,6 +83,15 @@
     <string name="pie_phone_status_no_service">No service</string>
     <string name="pie_phone_status_airplane_mode">Airplane mode on</string>
     <string name="pie_phone_status_emergency_only">Emergency calls only</string>
+
+    <!-- mount notifications -->
+    <string name="ext_media_mounted_notification_title">mounted</string>
+    <string name="ext_media_unmounted_notification_title">unmounted</string>
+    <string name="ext_media_unmounted_notification_message">You can safely remove storage.</string>
+    <string name="ext_media_unmount_action">Unmount</string>
+    <string name="ext_media_mount_action">Mount</string>
+    <string name="ext_media_unmounting_notification_title">unmounting\u2026</string>
+    <string name="ext_media_mounting_notification_title">mounting\u2026</string>
 
     <!-- Navigation ring shortcuts -->
     <string name="navigation_ring_title">Quick launch shortcuts</string>
@@ -120,5 +137,12 @@
     <string name="accessibility_quick_settings_lte_changed_off">LTE turned off.</string>
     <!-- Announcement made when LTE changes to on (not shown on the screen). [CHAR LIMIT=NONE] -->
     <string name="accessibility_quick_settings_lte_changed_on">LTE turned on.</string>
+
+    <!-- Title shown in recents popup for showing app in floating mode -->
+    <string name="status_bar_recent_floating_item_title">Floating mode</string>  
+    
+    <!-- Slim Action floats tile -->
+    <string name="quick_settings_slim_floats_on">Slim Floats Enabled</string>
+    <string name="quick_settings_slim_floats_off">Slim Floats Disabled</string>
 
 </resources>

@@ -259,6 +259,18 @@ interface IWindowManager
     void enableScreenIfNeeded();
 
     /**
+     * Toggle global menu
+     * @hide
+     */
+    void toggleGlobalMenu();
+
+    /** FLOAT VIEW **/
+    Rect getAppFullscreenViewRect();
+    Rect getAppMinimumViewRect();
+    Rect getFloatViewRect();
+    void notifyFloatActivityTouched(IBinder token, boolean force);
+
+    /**
      * Clears the frame statistics for a given window.
      *
      * @param token The window token.
@@ -275,9 +287,9 @@ interface IWindowManager
     WindowContentFrameStats getWindowContentFrameStats(IBinder token);
 
     /**
-     * Toggle global menu
+     * Get current system ui visibility mode.
      *
      * @hide
      */
-    void toggleGlobalMenu();
+    int getSystemUIVisibility();
 }

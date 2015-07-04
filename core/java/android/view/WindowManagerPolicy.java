@@ -427,6 +427,8 @@ public interface WindowManagerPolicy {
 
         /** Unregister a system listener for touch events */
         void unregisterPointerEventListener(PointerEventListener listener);
+
+        void addSystemUIVisibilityFlag(int flags);
     }
 
     public interface PointerEventListener {
@@ -1222,6 +1224,12 @@ public interface WindowManagerPolicy {
     public void showGlobalActions();
 
     /**
+     * Toggle global menu
+     * @hide
+     */
+    public void toggleGlobalMenu();
+
+    /**
      * @return The current height of the input method window.
      */
     public int getInputMethodWindowVisibleHeightLw();
@@ -1270,11 +1278,4 @@ public interface WindowManagerPolicy {
      * @param fadeoutDuration the duration of the exit animation, in milliseconds
      */
     public void startKeyguardExitAnimation(long startTime, long fadeoutDuration);
-
-    /**
-     * Toggle global menu
-     *
-     * @hide
-     */
-    public void toggleGlobalMenu();
 }
