@@ -17,15 +17,26 @@
 package com.android.systemui.recents.views;
 
 import android.animation.ValueAnimator;
+import android.app.ActivityManager;
+import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.IPackageDataObserver;
+import android.content.pm.PackageManager;
 import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.net.Uri;
+import android.provider.Settings;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.FrameLayout;
+import android.widget.PopupMenu;
+
 import com.android.systemui.R;
 import com.android.systemui.recents.Constants;
 import com.android.systemui.recents.RecentsConfiguration;
@@ -53,6 +64,7 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
         public void onTaskViewClicked(TaskStackView stackView, TaskView tv, TaskStack stack, Task t,
                                       boolean lockToTask);
         public void onTaskViewAppInfoClicked(Task t);
+        public void onTaskFloatClicked(Task t);
         public void onTaskViewDismissed(Task t);
         public void onAllTaskViewsDismissed();
         public void onTaskStackFilterTriggered();
@@ -74,6 +86,8 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
     Rect mTaskStackBounds = new Rect();
     int mFocusedTaskIndex = -1;
     int mPrevAccessibilityFocusedIndex = -1;
+
+    private PopupMenu mPopup;
 
     // Optimizations
     int mStackViewsAnimationDuration;
@@ -525,7 +539,51 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
 
         Task t = mStack.getTasks().get(mFocusedTaskIndex);
         TaskView tv = getChildViewForTask(t);
-        tv.dismissTask();
+        tv.dismissTask(0L);
+    }
+
+    private boolean dismissAll() {
+        return Settings.System.getInt(mContext.getContentResolver(),
+            Settings.System.RECENTS_CLEAR_ALL_DISMISS_ALL, 1) == 1;
+    }
+
+    public void dismissAllTasks() {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                ArrayList<Task> tasks = new ArrayList<Task>();
+                tasks.addAll(mStack.getTasks());
+                if (!dismissAll() && tasks.size() > 1) {
+                    // Ignore the visible foreground task
+                    Task foregroundTask = tasks.get(tasks.size() - 1);
+                    tasks.remove(foregroundTask);
+                }
+
+                // Remove visible TaskViews
+                long dismissDelay = 0;
+                int childCount = getChildCount();
+                int delay = mConfig.taskViewRemoveAnimDuration / childCount;
+                if (!dismissAll() && childCount > 1) childCount--;
+                for (int i = 0; i < childCount; i++) {
+                    TaskView tv = (TaskView) getChildAt(i);
+                    tasks.remove(tv.getTask());
+                    tv.dismissTask(dismissDelay);
+                    dismissDelay += delay;
+                }
+
+                int size = tasks.size();
+
+                if (size > 0) {
+                    // Remove possible alive Tasks
+                    for (int i = 0; i < size; i++) {
+                        Task t = tasks.get(i);
+                        if (mStack.getTasks().contains(t)) {
+                            mStack.removeTask(t);
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /** Resets the focused task. */
@@ -538,33 +596,6 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
             }
         }
         mFocusedTaskIndex = -1;
-    }
-
-    public void dismissAllTasks() {
-        post(new Runnable() {
-            @Override
-            public void run() {
-                ArrayList<Task> tasks = new ArrayList<Task>();
-                tasks.addAll(mStack.getTasks());
-
-                // Remove visible TaskViews
-                int childCount = getChildCount();
-                for (int i = 0; i < childCount; i++) {
-                    TaskView tv = (TaskView) getChildAt(i);
-                    tasks.remove(tv.getTask());
-                    tv.dismissTask();
-                }
-
-                int size = tasks.size();
-                // Remove any other Tasks
-                for (int i = 0; i < size; i++) {
-                    Task t = tasks.get(i);
-                    if (mStack.getTasks().contains(t)) {
-                        mStack.removeTask(t);
-                    }
-                }
-            }
-        });
     }
 
     @Override
@@ -922,7 +953,6 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
             TaskView frontTv = getChildViewForTask(newFrontMostTask);
             if (frontTv != null) {
                 frontTv.onTaskBound(newFrontMostTask);
-                frontTv.fadeInActionButton(0, mConfig.taskViewEnterFromAppDuration);
             }
         }
 
@@ -1110,6 +1140,95 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
         }
     }
 
+     @Override
+    public void onTaskFloatClicked(TaskView tv) {
+        if (mCb != null) {
+            mCb.onTaskFloatClicked(tv.getTask());
+        }
+    }
+
+    @Override
+    public void onTaskViewLongClicked(final TaskView tv) {
+        final PopupMenu popup = new PopupMenu(getContext(), tv.mHeaderView.mApplicationIcon);
+        mPopup = popup;
+        popup.getMenuInflater().inflate(R.menu.recent_popup_menu, popup.getMenu());
+
+        final Task task = tv.getTask();
+        final String packageName = task.key.baseIntent.getComponent().getPackageName();
+
+        try {
+            PackageManager pm = (PackageManager) getContext().getPackageManager();
+            ApplicationInfo appInfo = pm.getApplicationInfo(packageName, 0);
+            DevicePolicyManager dpm = (DevicePolicyManager) getContext()
+                    .getSystemService(Context.DEVICE_POLICY_SERVICE);
+
+            boolean hasActiveAdmins = dpm.packageHasActiveAdmins(packageName);
+            boolean isClearable = (appInfo.flags &
+                    (ApplicationInfo.FLAG_ALLOW_CLEAR_USER_DATA | ApplicationInfo.FLAG_SYSTEM)) !=
+                    ApplicationInfo.FLAG_SYSTEM;
+            if (!isClearable || hasActiveAdmins) {
+                popup.getMenu().findItem(R.id.recent_wipe_app).setEnabled(false);
+                popup.getMenu().findItem(R.id.recent_uninstall).setEnabled(false);
+            }
+        } catch (PackageManager.NameNotFoundException ex) {
+        }
+        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                switch (item.getItemId()) {
+                    case R.id.recent_remove_item:
+                        onTaskViewDismissed(tv);
+                        break;
+                    case R.id.recent_inspect_item:
+                        onTaskViewAppInfoClicked(tv);
+                        break;
+                    case R.id.recent_float_mode:
+                        onTaskFloatClicked(tv);
+                        break;
+                    case R.id.recent_force_stop:
+                    {
+                        ActivityManager am = (ActivityManager) getContext()
+                                .getSystemService(Context.ACTIVITY_SERVICE);
+                        am.forceStopPackage(packageName);
+                        onTaskViewDismissed(tv);
+                        break;
+                    }
+                    case R.id.recent_wipe_app:
+                    {
+                        ActivityManager am = (ActivityManager) getContext()
+                                .getSystemService(Context.ACTIVITY_SERVICE);
+                        am.clearApplicationUserData(packageName, new IPackageDataObserver.Stub() {
+                            @Override
+                            public void onRemoveCompleted(String packageName, boolean succeeded) {}
+                        });
+                        onTaskViewDismissed(tv);
+                        break;
+                    }
+                    case R.id.recent_uninstall:
+                    {
+                        Uri packageUri = Uri.parse("package:" + packageName);
+                        Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
+                        uninstallIntent.putExtra(Intent.EXTRA_UNINSTALL_ALL_USERS, true);
+                        getContext().startActivity(uninstallIntent);
+                        onTaskViewDismissed(tv);
+                        break;
+                    }
+                    default:
+                        return false;
+                }
+                return true;
+            }
+        });
+        popup.setOnDismissListener(new PopupMenu.OnDismissListener() {
+            @Override
+            public void onDismiss(PopupMenu menu) {
+                mPopup = null;
+            }
+        });
+        popup.show();
+    }
+
+
     @Override
     public void onTaskViewClicked(TaskView tv, Task task, boolean lockToTask) {
         // Cancel any doze triggers
@@ -1190,7 +1309,7 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
                         public void run() {
                             mStack.removeTask(t);
                         }
-                    });
+                    }, 0L);
                 } else {
                     // Otherwise, remove the task from the stack immediately
                     mStack.removeTask(t);

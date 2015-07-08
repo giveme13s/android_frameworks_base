@@ -3727,12 +3727,20 @@ public final class Settings {
          */
         public static final String CUSTOM_BUTTON_BRIGHTNESS = "custom_button_brightness";
 
+
         /**
          * use same value for buttons as for screen (manual and auto mode)
          *
          * @hide
          */
         public static final String CUSTOM_BUTTON_USE_SCREEN_BRIGHTNESS = "custom_button_use_screen_brightness";
+
+         /**
+         * Whether to dismiss all recents tasks
+         * @hide
+         */
+        public static final String RECENTS_CLEAR_ALL_DISMISS_ALL = "recents_clear_all_dismiss_all";         
+        
 
         /**
          * Disable hw buttons - actions, brightness, haptic feedback, overflow menu
@@ -8505,11 +8513,21 @@ public final class Settings {
         /**
          * Defines global runtime overrides to window policy.
          *
-         * See {@link com.android.internal.policy.impl.PolicyControl} for value format.
+         * See {@link android.view.WindowManagerPolicyControl} for value format.
          *
          * @hide
          */
         public static final String POLICY_CONTROL = "policy_control";
+        public static final String POLICY_CONTROL_SELECTED = "policy_control_selected";
+
+        /**
+         * Defines global runtime overrides to window policy style.
+         *
+         * See {@link android.view.WindowManagerPolicyControl} for value definitions.
+         *
+         * @hide
+         */
+        public static final String POLICY_CONTROL_STYLE = "policy_control_style";
 
         /**
          * Defines global zen mode.  ZEN_MODE_OFF, ZEN_MODE_IMPORTANT_INTERRUPTIONS,

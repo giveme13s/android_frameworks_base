@@ -303,7 +303,7 @@ public class RecentPanelView {
 
         // Floating window entry
         popup.getMenu().add(0, MENU_APP_FLOATING_ID, 0,
-                mContext.getResources().getString(R.string.status_bar_recent_floating_item_title));
+                mContext.getResources().getString(R.string.recent_float_mode_title));
         
         if (Settings.Secure.getInt(mContext.getContentResolver(),
                 Settings.Secure.DEVELOPMENT_SHORTCUT, 0) == 1) {
@@ -804,8 +804,7 @@ public class RecentPanelView {
     private boolean isCurrentHomeActivity(ActivityManager.RunningTaskInfo task) {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_HOME);
-        ResolveInfo resolveInfo =
-            mContext.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        ResolveInfo resolveInfo = mContext.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
         String currentHomePackage = resolveInfo.activityInfo.packageName;
         return task.baseActivity.getPackageName().equals(currentHomePackage);
     }
