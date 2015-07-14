@@ -1182,7 +1182,7 @@ public class TaskStackView extends FrameLayout implements TaskStack.TaskStackCal
                     case R.id.recent_inspect_item:
                         onTaskViewAppInfoClicked(tv);
                         break;
-                    case R.id.recent_float_mode:
+                    case R.id.recent_launch_floating:
                         onTaskFloatClicked(tv);
                         break;
                     case R.id.recent_force_stop:

@@ -303,7 +303,7 @@ public class RecentPanelView {
 
         // Floating window entry
         popup.getMenu().add(0, MENU_APP_FLOATING_ID, 0,
-                mContext.getResources().getString(R.string.recent_float_mode_title));
+                mContext.getResources().getString(R.string.floating_item_title));
         
         if (Settings.Secure.getInt(mContext.getContentResolver(),
                 Settings.Secure.DEVELOPMENT_SHORTCUT, 0) == 1) {

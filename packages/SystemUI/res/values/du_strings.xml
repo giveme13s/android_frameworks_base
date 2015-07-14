@@ -141,7 +141,7 @@
     <string name="accessibility_quick_settings_lte_changed_on">LTE turned on.</string>
 
     <!-- Title shown in recents popup for showing app launch in floating mode -->
-    <string name="recent_float_mode_title">Floating mode</string>
+		<string name="floating_item_title">Floating Mode</string>
     
     <!-- Slim Action floats tile -->
     <string name="quick_settings_slim_floats_on">Slim Floats Enabled</string>
