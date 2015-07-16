@@ -1283,6 +1283,10 @@ final class ActivityStack {
                         }
                         if (r != starting) {
                             mStackSupervisor.startSpecificActivityLocked(r, false, false);
+                            if (activityNdx >= activities.size()) {
+                                // Record may be removed if its process needs to restart.
+                                activityNdx = activities.size() - 1;
+                            }
                         }
 
                     } else if (r.visible) {
@@ -2015,6 +2019,11 @@ final class ActivityStack {
     }
 
     private final void updatePrivacyGuardNotificationLocked(ActivityRecord next) {
+        if (android.provider.Settings.Secure.getIntForUser(mService.mContext.getContentResolver(),
+            android.provider.Settings.Secure.PRIVACY_GUARD_NOTIFICATION,
+            1, UserHandle.USER_CURRENT) == 0) {
+            return;
+        }
 
         String privacyGuardPackageName = mStackSupervisor.mPrivacyGuardPackageName;
         if (privacyGuardPackageName != null && privacyGuardPackageName.equals(next.packageName)) {

@@ -1134,6 +1134,7 @@ public final class ActivityManagerService extends ActivityManagerNative
     boolean mAutoStopProfiler = false;
     int mProfileType = 0;
     String mOpenGlTraceApp = null;
+    String mTrackAllocationApp = null;
 
     final long[] mTmpLong = new long[1];
 
@@ -1275,8 +1276,9 @@ public final class ActivityManagerService extends ActivityManagerNative
     static final int SEND_LOCALE_TO_MOUNT_DAEMON_MSG = 47;
     static final int DISMISS_DIALOG_MSG = 48;
     static final int NOTIFY_TASK_STACK_CHANGE_LISTENERS_MSG = 49;
-    static final int POST_PRIVACY_NOTIFICATION_MSG = 50;
-    static final int CANCEL_PRIVACY_NOTIFICATION_MSG = 51;
+
+    static final int POST_PRIVACY_NOTIFICATION_MSG = 60;
+    static final int CANCEL_PRIVACY_NOTIFICATION_MSG = 61;
 
     static final int FIRST_ACTIVITY_STACK_MSG = 100;
     static final int FIRST_BROADCAST_QUEUE_MSG = 200;
@@ -1851,7 +1853,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                             context.getApplicationInfo().loadLabel(context.getPackageManager()));
                     String title = mContext.getString(R.string.privacy_guard_notification);
 
-                    Intent infoIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Intent infoIntent = new Intent(Settings.ACTION_APP_OPS_DETAILS_SETTINGS,
                             Uri.fromParts("package", root.packageName, null));
 
                     Notification notification = new Notification();
@@ -6123,6 +6125,11 @@ public final class ActivityManagerService extends ActivityManagerNative
                 enableOpenGlTrace = true;
                 mOpenGlTraceApp = null;
             }
+            boolean enableTrackAllocation = false;
+            if (mTrackAllocationApp != null && mTrackAllocationApp.equals(processName)) {
+                enableTrackAllocation = true;
+                mTrackAllocationApp = null;
+            }
 
             // If the app is being launched for restore or full backup, set it up specially
             boolean isRestrictedBackupMode = false;
@@ -6151,7 +6158,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             thread.bindApplication(processName, appInfo, providers, app.instrumentationClass,
                     profilerInfo, app.instrumentationArguments, app.instrumentationWatcher,
                     app.instrumentationUiAutomationConnection, testMode, enableOpenGlTrace,
-                    isRestrictedBackupMode || !normalMode, app.persistent,
+                    enableTrackAllocation, isRestrictedBackupMode || !normalMode, app.persistent,
                     new Configuration(mConfiguration), app.compat,
                     getCommonServicesLocked(app.isolated),
                     mCoreSettingsObserver.getCoreSettingsLocked());
@@ -8605,6 +8612,10 @@ public final class ActivityManagerService extends ActivityManagerNative
             SparseArray<ProcessRecord> uids = pmap.valueAt(i);
             for (int j = 0; j < uids.size(); j++) {
                 ProcessRecord proc = uids.valueAt(j);
+                if (proc.thread == null) {
+                    // Don't kill process if it is not attached.
+                    continue;
+                }
                 if (proc.userId != tr.userId) {
                     // Don't kill process for a different user.
                     continue;
@@ -10508,7 +10519,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         synchronized (this) {
             boolean isDebuggable = "1".equals(SystemProperties.get(SYSTEM_DEBUGGABLE, "0"));
             if (!isDebuggable) {
-                if ((app.flags&ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+                if ((app.flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
                     throw new SecurityException("Process not debuggable: " + app.packageName);
                 }
             }
@@ -10517,11 +10528,24 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
     }
 
+    void setTrackAllocationApp(ApplicationInfo app, String processName) {
+        synchronized (this) {
+            boolean isDebuggable = "1".equals(SystemProperties.get(SYSTEM_DEBUGGABLE, "0"));
+            if (!isDebuggable) {
+                if ((app.flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+                    throw new SecurityException("Process not debuggable: " + app.packageName);
+                }
+            }
+
+            mTrackAllocationApp = processName;
+        }
+    }
+
     void setProfileApp(ApplicationInfo app, String processName, ProfilerInfo profilerInfo) {
         synchronized (this) {
             boolean isDebuggable = "1".equals(SystemProperties.get(SYSTEM_DEBUGGABLE, "0"));
             if (!isDebuggable) {
-                if ((app.flags&ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+                if ((app.flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
                     throw new SecurityException("Process not debuggable: " + app.packageName);
                 }
             }
@@ -10562,6 +10586,23 @@ public final class ActivityManagerService extends ActivityManagerNative
         synchronized (this) {
             mController = controller;
             Watchdog.getInstance().setActivityController(controller);
+
+            // linkToDeath to ensure ActivityManager.isUserAMonkey returns correct status.
+            if (controller != null) {
+
+                final IBinder.DeathRecipient death = new DeathRecipient() {
+                    @Override
+                    public void binderDied() {
+                        setActivityController(null);
+                    }
+                };
+
+                try {
+                    controller.asBinder().linkToDeath(death, 0);
+                } catch (RemoteException e) {
+                    Slog.w(TAG, "given controller IBinder is already dead.");
+                }
+            }
         }
     }
 
@@ -10670,9 +10711,15 @@ public final class ActivityManagerService extends ActivityManagerNative
                     return true;
                 }
             }
+            final int anrPid = proc.pid;
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    if (anrPid != proc.pid) {
+                        Slog.i(TAG, "Ignoring stale ANR (occurred in " + anrPid +
+                                    ", but current pid is " + proc.pid + ")");
+                        return;
+                    }
                     appNotResponding(proc, activity, parent, aboveSystem, annotation);
                 }
             });
@@ -13383,6 +13430,15 @@ public final class ActivityManagerService extends ActivityManagerNative
                     needSep = false;
                 }
                 pw.println("  mOpenGlTraceApp=" + mOpenGlTraceApp);
+            }
+        }
+        if (mTrackAllocationApp != null) {
+            if (dumpPackage == null || dumpPackage.equals(mTrackAllocationApp)) {
+                if (needSep) {
+                    pw.println();
+                    needSep = false;
+                }
+                pw.println("  mTrackAllocationApp=" + mTrackAllocationApp);
             }
         }
         if (mProfileApp != null || mProfileProc != null || mProfileFile != null
