@@ -113,6 +113,12 @@
     <integer name="config_activityShortDur">75</integer>
     <integer name="config_activityDefaultDur">110</integer>
 
+    <!-- The duration (in milliseconds) of recent app screen animation. -->
+    <integer name="config_recentDefaultDur">300</integer>
+
+    <!-- The duration (in milliseconds) of recent app screen exit animation. -->
+    <integer name="config_recentExitDur">450</integer>
+
     <!-- Duration for the dim animation behind a dialog.  This may be either
          a percentage, which is relative to the duration of the enter/open
          animation of the window being shown that is dimming behind, or it may
@@ -376,6 +382,9 @@
           <item>[ApnSettingV3]Name1,apn2,,,,,,,,,123,46,,mms|*,IPV6,IP,true,12,,,,,,,,</item>" -->
     <string-array translatable="false" name="config_tether_apndata">
     </string-array>
+
+    <!-- Boolean indicating whether Softap requires reloading AP firmware -->
+    <bool name="config_wifiApFirmwareReload">true</bool>
 
     <!-- Boolean indicating whether the wifi chipset has dual frequency band support -->
     <bool translatable="false" name="config_wifi_dual_band_support">false</bool>
@@ -1598,8 +1607,10 @@
     <integer name="config_safe_media_volume_index">10</integer>
 
     <!-- Configure mobile network MTU. The standard default is set here but each carrier
-         may have a specific value set in an overlay config.xml file. -->
-    <integer name="config_mobile_mtu">1500</integer>
+         may have a specific value set in an overlay config.xml file. 
+         This really must be 1358 as per 3GPP standards and packet segmentation on the LTE
+         radio.-->
+    <integer name="config_mobile_mtu">1358</integer>
 
     <!-- Configure mobile tcp buffer sizes in the form:
          rat-name:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max
@@ -1867,6 +1878,7 @@
          "bugreport" = Take bug report, if available
          "silent" = silent mode
          "users" = list of users
+         "torch" = Toggle torch
          -->
     <string-array translatable="false" name="config_globalActionsList">
         <item>power</item>
@@ -1874,6 +1886,7 @@
         <item>screenshot</item>
         <item>screenrecord</item>
         <item>airplane</item>
+        <item>torch</item>
         <item>settings</item>
         <item>lockdown</item>
         <item>bugreport</item>
@@ -2129,7 +2142,7 @@
     <bool name="config_enable_mms_with_mobile_data_off">false</bool>
 
     <!-- User display names for app ops codes -->
-    <string-array name="app_ops_labels">
+		<!-- <string-array name="app_ops_labels">
         <item>Trying to access location</item>
         <item>Trying to access location</item>
         <item>Trying to access location</item>
@@ -2192,6 +2205,7 @@
         <item>Trying to turn on mobile data</item>
 
     </string-array>
+		-->
 
     <!-- Configuartion to set zen mode when silent mode is on -->
     <bool name="config_setZenModeWhenSilentModeOn">false</bool>
@@ -2331,23 +2345,23 @@
     <!-- Boolean to enable adb by default on a per-device basis -->
     <bool name="config_enableAdbByDefault">false</bool>
 
-    <!-- Hardware 'face' keys present on the device, stored as a bit field.
-         This integer should equal the sum of the corresponding value for each
-         of the following keys present:
-             1 - Home
-             2 - Back
-             4 - Menu
-             8 - Assistant (search)
-            16 - App switch
-         For example, a device with Home, Back and Menu keys would set this
-         config to 7. -->
-    <integer name="config_deviceHardwareKeys">0</integer>
-
-    <integer name="config_backKillTimeout">2000</integer>
-
     <!-- If this is true, key chords can be used to take a screen record on the device. -->
     <bool name="config_enableScreenrecordChord">true</bool>
 
     <!-- Doze: force using accelerometer as pick up sensor -->
     <bool name="config_dozeUseAccelerometer">false</bool>
+
+    <!-- Hardware "softkeys" present on the device, stored as a bit field.
+         This integer should equal the sum of the corresponding value for each
+         of the following keys present:
+            1 - Home
+            2 - Back
+            4 - Menu
+            8 - Assistant (search)
+           16 - App switch
+           32 - Camera
+        For example, a device with Home, Back and Menu keys would set this
+        config to 7. -->
+    <integer name="config_deviceHardwareKeys">0</integer>
+
 </resources>

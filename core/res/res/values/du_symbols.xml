@@ -155,4 +155,7 @@
   <java-symbol type="string" name="setting_confirmation_yes" />
   <java-symbol type="string" name="setting_confirmation_no" />
 
+  <!-- From services -->
+  <java-symbol type="array" name="app_ops_labels" />
+
 </resources>

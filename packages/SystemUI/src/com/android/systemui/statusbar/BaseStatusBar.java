@@ -273,6 +273,8 @@ public abstract class BaseStatusBar extends SystemUI implements
     protected WindowManager mWindowManager;
     protected IWindowManager mWindowManagerService;
 
+    private NotificationManager mNoMan;
+
     protected abstract void refreshLayout(int layoutDirection);
 
     protected Display mDisplay;
@@ -488,9 +490,7 @@ public abstract class BaseStatusBar extends SystemUI implements
                 updateLockscreenNotificationSetting();
                 updateNotifications();
             } else if (BANNER_ACTION_CANCEL.equals(action) || BANNER_ACTION_SETUP.equals(action)) {
-                NotificationManager noMan = (NotificationManager)
-                        mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-                noMan.cancel(HIDDEN_NOTIFICATION_ID);
+                mNoMan.cancel(HIDDEN_NOTIFICATION_ID);
 
                 Settings.Secure.putInt(mContext.getContentResolver(),
                         Settings.Secure.SHOW_NOTE_ABOUT_NOTIFICATION_HIDING, 0);
@@ -599,6 +599,9 @@ public abstract class BaseStatusBar extends SystemUI implements
     public void start() {
         mWindowManager = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
         mWindowManagerService = WindowManagerGlobal.getWindowManagerService();
+
+        mNoMan = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+
         mDisplay = mWindowManager.getDefaultDisplay();
         mDevicePolicyManager = (DevicePolicyManager)mContext.getSystemService(
                 Context.DEVICE_POLICY_SERVICE);
@@ -789,9 +792,7 @@ public abstract class BaseStatusBar extends SystemUI implements
                             mContext.getString(R.string.hidden_notifications_setup),
                             setupIntent);
 
-            NotificationManager noMan =
-                    (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-            noMan.notify(HIDDEN_NOTIFICATION_ID, note.build());
+            mNoMan.notify(HIDDEN_NOTIFICATION_ID, note.build());
         }
     }
 
@@ -1007,7 +1008,6 @@ public abstract class BaseStatusBar extends SystemUI implements
         final View settingsButton = guts.findViewById(R.id.notification_inspect_item);
         final View appSettingsButton
                 = guts.findViewById(R.id.notification_inspect_app_provided_settings);
-        final View filterButton = guts.findViewById(R.id.notification_inspect_filter_notification);
         if (appUid >= 0) {
             final int appUidF = appUid;
             settingsButton.setOnClickListener(new View.OnClickListener() {
@@ -1015,20 +1015,6 @@ public abstract class BaseStatusBar extends SystemUI implements
                     startAppNotificationSettingsActivity(pkg, appUidF);
                 }
             });
-
-            filterButton.setVisibility(View.VISIBLE);
-            //filterButton.setOnClickListener(new View.OnClickListener() {
-                //public void onClick(View v) {
-                    //ContentValues values = new ContentValues();
-                    //String message = SpamFilter.getNotificationContent(
-                    //sbn.getNotification());
-                    //values.put(NotificationTable.MESSAGE_TEXT, message);
-                    //values.put(PackageTable.PACKAGE_NAME, pkg);
-                    //mContext.getContentResolver().insert(SPAM_MESSAGE_URI, values);
-                    //removeNotification(sbn.getKey(), null);
-                    //onNotificationClear(sbn);
-                //}
-            //});
 
             final Intent appSettingsQueryIntent
                     = new Intent(Intent.ACTION_MAIN)
@@ -1058,7 +1044,6 @@ public abstract class BaseStatusBar extends SystemUI implements
         } else {
             settingsButton.setVisibility(View.GONE);
             appSettingsButton.setVisibility(View.GONE);
-            filterButton.setVisibility(View.GONE);
         }
 
     }
@@ -2025,7 +2010,26 @@ public abstract class BaseStatusBar extends SystemUI implements
     }
 
     private boolean shouldShowOnKeyguard(StatusBarNotification sbn) {
-        return mShowLockscreenNotifications && !mNotificationData.isAmbient(sbn.getKey());
+        if (!mShowLockscreenNotifications || mNotificationData.isAmbient(sbn.getKey())) {
+            return false;
+        }
+        final String pkgName = sbn.getPackageName();
+        // always hide privacy guard notification on lock screen
+        if (pkgName.equals("android") &&
+                sbn.getId() == com.android.internal.R.string.privacy_guard_notification) {
+            return false;
+        }
+        // retrieve per app visibility setting
+        final int showOnKeyguard = mNoMan.getShowNotificationForPackageOnKeyguard(
+                pkgName, sbn.getUid());
+        boolean isKeyguardAllowedForApp =
+                (showOnKeyguard & Notification.SHOW_ALL_NOTI_ON_KEYGUARD) != 0;
+        if (isKeyguardAllowedForApp && sbn.isOngoing()) {
+            isKeyguardAllowedForApp =
+                    (showOnKeyguard & Notification.SHOW_NO_ONGOING_NOTI_ON_KEYGUARD) == 0;
+        }
+        return mShowLockscreenNotifications && !mNotificationData.isAmbient(sbn.getKey())
+                && isKeyguardAllowedForApp;
     }
 
     protected void setZenMode(int mode) {
