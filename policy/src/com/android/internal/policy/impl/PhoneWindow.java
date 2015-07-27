@@ -2334,8 +2334,7 @@ public class PhoneWindow extends Window implements MenuBuilder.Callback {
                 if (cb instanceof android.app.Activity && mIsFloatingWindow) {
                     android.app.Activity act = (android.app.Activity)cb;
                     if (shouldCloseOnTouch(act, ev)) {
-                        //act.finishFloating();
-                        act.finish();
+                        act.finishFloating();
                         return true;
                     }
                 }
