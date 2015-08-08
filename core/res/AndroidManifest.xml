@@ -18,6 +18,7 @@
 */
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:androidprv="http://schemas.android.com/apk/prv/res/android"
     package="android" coreApp="true" android:sharedUserId="android.uid.system"
     android:sharedUserLabel="@string/android_system_label">
 
@@ -226,8 +227,6 @@
     <protected-broadcast android:name="android.intent.action.PROXY_CHANGE" />
 
     <protected-broadcast android:name="android.os.UpdateLock.UPDATE_LOCK_CHANGED" />
-    <protected-broadcast android:name="android.intent.action.NAVBAR_EDIT" />
-    <protected-broadcast android:name="android.intent.action.NAVBAR_RING_EDIT" />
 
     <protected-broadcast android:name="android.intent.action.DREAMING_STARTED" />
     <protected-broadcast android:name="android.intent.action.DREAMING_STOPPED" />
@@ -2535,12 +2534,13 @@
         android:protectionLevel="signature" />
 
     <!-- Allows an application to broadcast an SMS receipt notification.
-    <p>Not for use by third-party applications. -->
+         Not for use by third-party applications. -->
     <permission android:name="android.permission.BROADCAST_SMS"
         android:permissionGroup="android.permission-group.MESSAGES"
         android:label="@string/permlab_broadcastSmsReceived"
         android:description="@string/permdesc_broadcastSmsReceived"
-        android:protectionLevel="signature" />
+        android:protectionLevel="signature"
+        androidprv:allowViaWhitelist="true" />
 
     <!-- Allows an application to broadcast a WAP PUSH receipt notification.
     <p>Not for use by third-party applications. -->
@@ -2936,6 +2936,37 @@
         android:description="@string/permdesc_bindCarrierMessagingService"
         android:protectionLevel="signature|system" />
 
+    <!-- =============================================================== -->
+    <!-- Permissions for accessing security data                         -->
+    <!-- =============================================================== -->
+    <eat-comment />
+
+    <!-- Used for permissions that allow an application to access or configure
+         the device security information.
+         @hide This is not a third-party API (intended for system apps). -->
+    <permission-group android:name="android.permission-group.SECURITY"
+        android:label="@string/permgrouplab_security"
+        android:icon="@drawable/perm_group_security"
+        android:description="@string/permgroupdesc_security"
+        android:priority="400"/>
+
+    <!-- Allows an application to read the phone blacklist data.
+         @hide This is not a third-party API (intended for system apps). -->
+    <permission android:name="android.permission.READ_PHONE_BLACKLIST"
+        android:permissionGroup="android.permission-group.SECURITY"
+        android:protectionLevel="signature|system"
+        androidprv:allowViaWhitelist="true"
+        android:label="@string/permlab_readPhoneBlacklist"
+        android:description="@string/permdesc_readPhoneBlacklist" />
+
+    <!-- Allows an application to change the phone blacklist data.
+         @hide This is not a third-party API (intended for system apps). -->
+    <permission android:name="android.permission.CHANGE_PHONE_BLACKLIST"
+        android:permissionGroup="android.permission-group.SECURITY"
+        android:protectionLevel="signature|system"
+        android:label="@string/permlab_changePhoneBlacklist"
+        android:description="@string/permdesc_changePhoneBlacklist" />
+
      <!-- Allows an application to use the Theme Service
           @hide -->
      <permission android:name="android.permission.ACCESS_THEME_MANAGER"
@@ -2959,6 +2990,13 @@
          android:label="@string/permlab_writeThemes"
          android:description="@string/permdesc_writeThemesDesc"
          android:protectionLevel="system|signature" />
+
+    <!-- Allows an application to use the system Torch service
+        @hide-->
+    <permission android:name="android.permission.ACCESS_TORCH_SERVICE"
+        android:label="@string/permlab_accessTorchService"
+        android:description="@string/permdesc_accessTorchService"
+        android:protectionLevel="signature" />
 
     <!-- The system process is explicitly the only one allowed to launch the
          confirmation UI for full backup/restore -->

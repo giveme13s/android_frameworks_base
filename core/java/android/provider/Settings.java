@@ -1258,13 +1258,9 @@ public final class Settings {
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_COUNT);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_DELAY_MS);
             MOVED_TO_SECURE.add(Secure.WIFI_WATCHDOG_PING_TIMEOUT_MS);
-            for (String s : Secure.NAVIGATION_RING_TARGETS) {
-                MOVED_TO_SECURE.add(s);
-
 
             // At one time in System, then Global, but now back in Secure
             MOVED_TO_SECURE.add(Secure.INSTALL_NON_MARKET_APPS);
-            }
         }
 
         private static final HashSet<String> MOVED_TO_GLOBAL;
@@ -2189,6 +2185,18 @@ public final class Settings {
         public static final String DOZE_TIME_MODE = "doze_time_mode";
 
         /**
+         * Statusbar DU logo
+         * @hide
+         */
+        public static final String STATUS_BAR_DU_LOGO = "status_bar_du_logo";
+
+        /**
+         * Statusbar DU logo color setting
+         * @hide
+         */
+        public static final String STATUS_BAR_DU_LOGO_COLOR = "status_bar_du_logo_color";
+
+        /**
          * Control whether the process CPU usage meter should be shown.
          *
          * @deprecated Use {@link Global#SHOW_PROCESSES} instead
@@ -2334,6 +2342,55 @@ public final class Settings {
         @Deprecated
         public static final String NOTIFICATIONS_USE_RING_VOLUME =
             "notifications_use_ring_volume";
+
+        /**
+         * Whether the blacklisting feature for phone calls is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_ENABLED = "phone_blacklist_enabled";
+
+        /**
+         * Whether a notification should be shown when a call/message is blocked
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_NOTIFY_ENABLED = "phone_blacklist_notify_enabled";
+
+        /**
+         * Whether the blacklisting feature for phone calls from private numbers is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_PRIVATE_NUMBER_MODE = "phone_blacklist_private_number_enabled";
+
+        /**
+         * Whether the blacklisting feature for phone calls from unknown numbers is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE = "phone_blacklist_unknown_number_enabled";
+
+        /**
+         * Constants to be used for {@link PHONE_BLACKLIST_PRIVATE_NUMBER_MODE} and
+         * {@link PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE}.
+         * @hide
+         */
+        public static final int BLACKLIST_DO_NOT_BLOCK = 0;
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_BLOCK = 1;
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_PHONE_SHIFT = 0;
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_MESSAGE_SHIFT = 4;
+
+        /**
+         * Whether the regex blacklisting feature for phone calls is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_REGEX_ENABLED = "phone_blacklist_regex_enabled";
 
         /**
          * Whether silent mode should allow vibration feedback. This is used
@@ -3451,6 +3508,14 @@ public final class Settings {
          */
         public static final String STATUS_BAR_SHOW_BATTERY_PERCENT = "status_bar_show_battery_percent";
 
+        /**
+         * Visibility of SIM icons of unpopulated SIM slots in MSIM mode
+         * 0: Hide unpopulated SIM icons
+         * 1: Show unpopulated SIM icons
+         * @hide
+         */
+        public static final String STATUS_BAR_MSIM_SHOW_EMPTY_ICONS = "status_bar_show_empty_sims";
+
          /**
          * Whether to use gesture anywhere feature.
          * @hide
@@ -3649,6 +3714,12 @@ public final class Settings {
         public static final String POWERMENU_POWER = "powermenu_power";
 
         /**
+         * Whether to show the IME arrows in the navigation bar
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_IME_ARROWS = "navigation_bar_ime_arrows";
+
+        /**
          * show clear all recents button
          *  @hide
          */
@@ -3740,7 +3811,6 @@ public final class Settings {
          */
         public static final String CUSTOM_BUTTON_BRIGHTNESS = "custom_button_brightness";
 
-
         /**
          * use same value for buttons as for screen (manual and auto mode)
          *
@@ -3781,6 +3851,12 @@ public final class Settings {
         public static final String FORCE_EXPANDED_NOTIFICATIONS = "force_expanded_notifications";
 
         /**
+         * Whether the notification light will be allowed when in zen mode during downtime
+         * @hide
+         */
+        public static final String ALLOW_LIGHTS = "allow_lights";
+
+        /**
          * ListView Animations
          * 0 == None
          * 1 == Wave (Left)
@@ -3811,7 +3887,6 @@ public final class Settings {
 
         /**
          * Boolean value whether to link ringtone and notification volume
-         *
          * @hide
          */
         public static final String VOLUME_LINK_NOTIFICATION = "volume_link_notification";
@@ -4389,7 +4464,8 @@ public final class Settings {
             STATUS_BAR_BATTERY_STYLE,
             INCREASING_RING,
             INCREASING_RING_START_VOLUME,
-            INCREASING_RING_RAMP_UP_TIME
+            INCREASING_RING_RAMP_UP_TIME,
+            ALLOW_LIGHTS
         };
 
         /**
@@ -7761,6 +7837,12 @@ public final class Settings {
         * @hide
         */
        public static final String WIFI_COUNTRY_CODE = "wifi_country_code";
+
+       /**
+        * 802.11 country code in ISO 3166 format set from the sim card
+        * @hide
+        */
+       public static final String WIFI_COUNTRY_CODE_SIM0 = "wifi_country_code_sim0";
 
        /**
         * The interval in milliseconds to issue wake up scans when wifi needs
