@@ -36,6 +36,7 @@ import android.content.pm.ThemeUtils;
 import android.content.pm.UserInfo;
 import android.database.ContentObserver;
 import android.graphics.drawable.Drawable;
+import android.hardware.TorchManager;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.os.Build;
@@ -87,12 +88,14 @@ import android.os.IBinder;
 import android.os.Messenger;
 import android.os.RemoteException;
 
+import com.android.internal.util.nameless.NamelessActions;
+
 /**
  * Helper to show the global actions dialog.  Each item is an {@link Action} that
  * may show depending on whether the keyguard is showing, and whether the device
  * is provisioned.
  */
-class GlobalActions implements DialogInterface.OnDismissListener, DialogInterface.OnClickListener  {
+class GlobalActions implements DialogInterface.OnDismissListener, DialogInterface.OnClickListener {
 
     private static final String TAG = "GlobalActions";
 
@@ -110,6 +113,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     private static final String GLOBAL_ACTION_KEY_USERS = "users";
     private static final String GLOBAL_ACTION_KEY_SETTINGS = "settings";
     private static final String GLOBAL_ACTION_KEY_LOCKDOWN = "lockdown";
+    private static final String GLOBAL_ACTION_KEY_TORCH = "torch";
 
     private final Context mContext;
     private final WindowManagerFuncs mWindowManagerFuncs;
@@ -285,6 +289,35 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
         onAirplaneModeChanged();
 
         mItems = new ArrayList<Action>();
+
+        // next: On-The-Go, if enabled
+        boolean showOnTheGo = Settings.System.getBoolean(mContext.getContentResolver(),
+                Settings.System.POWER_MENU_ONTHEGO_ENABLED, false);
+        if (showOnTheGo) {
+            mItems.add(
+                new SinglePressAction(com.android.internal.R.drawable.ic_lock_onthego,
+                        R.string.global_action_onthego) {
+
+                        public void onPress() {
+                            NamelessActions.processAction(mContext,
+                                    NamelessActions.ACTION_ONTHEGO_TOGGLE);
+                        }
+
+                        public boolean onLongPress() {
+                            return false;
+                        }
+
+                        public boolean showDuringKeyguard() {
+                            return true;
+                        }
+
+                        public boolean showBeforeProvisioning() {
+                            return true;
+                        }
+                    }
+            );
+        }
+
         String[] defaultActions = mContext.getResources().getStringArray(
                 com.android.internal.R.array.config_globalActionsList);
 
@@ -343,6 +376,11 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 if (Settings.System.getInt(mContext.getContentResolver(),
                         Settings.System.POWERMENU_LOCKDOWN, 0) != 0) {
                 mItems.add(getLockdownAction());
+                }
+            } else if (GLOBAL_ACTION_KEY_TORCH.equals(actionKey)) {
+                if (Settings.System.getInt(mContext.getContentResolver(),
+                        Settings.System.POWERMENU_TORCH, 0) != 0) {
+                mItems.add(getTorchToggleAction());
                 }
             } else {
                 Log.e(TAG, "Invalid global action key " + actionKey);
@@ -434,6 +472,32 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
 
             public void onPress() {
                 takeScreenshot();
+            }
+
+            public boolean showDuringKeyguard() {
+                return true;
+            }
+
+            public boolean showBeforeProvisioning() {
+                return false;
+            }
+        };
+    }
+
+    private Action getTorchToggleAction() {
+        return new SinglePressAction(com.android.internal.R.drawable.ic_lock_torch,
+                R.string.global_action_torch) {
+
+            public void onPress() {
+                // toggle torch the new way
+                TorchManager torchManager =
+                        (TorchManager) mContext.getSystemService(Context.TORCH_SERVICE);
+                if (!torchManager.isTorchOn()) {
+                    torchManager.setTorchEnabled(true);
+                } else {
+                    torchManager.setTorchEnabled(false);
+                }
+                return;
             }
 
             public boolean showDuringKeyguard() {
@@ -754,6 +818,15 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 mHandler.postDelayed(mScreenshotTimeout, 10000);
             }
         }
+    }
+
+    private void startOnTheGo() {
+        final ComponentName cn = new ComponentName("com.android.systemui",
+                "com.android.systemui.nameless.onthego.OnTheGoService");
+        final Intent startIntent = new Intent();
+        startIntent.setComponent(cn);
+        startIntent.setAction("start");
+        mContext.startService(startIntent);
     }
 
     private void prepareDialog() {
