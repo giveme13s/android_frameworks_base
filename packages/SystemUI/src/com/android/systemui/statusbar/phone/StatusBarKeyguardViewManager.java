@@ -18,6 +18,7 @@ package com.android.systemui.statusbar.phone;
 
 import android.content.ComponentCallbacks2;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.SystemClock;
@@ -87,6 +88,7 @@ public class StatusBarKeyguardViewManager {
         mContainer = container;
         mStatusBarWindowManager = statusBarWindowManager;
         mScrimController = scrimController;
+        if (mBouncer != null) mBouncer.removeView();
         mBouncer = new KeyguardBouncer(mContext, mViewMediatorCallback, mLockPatternUtils,
                 mStatusBarWindowManager, container);
     }
@@ -442,5 +444,9 @@ public class StatusBarKeyguardViewManager {
 
     public boolean isKeyguardShowingMedia() {
         return mPhoneStatusBar.isKeyguardShowingMedia();
+    }
+
+    public void setBackgroundBitmap(Bitmap bmp) {
+        mPhoneStatusBar.setBackgroundBitmap(bmp);
     }
 }
