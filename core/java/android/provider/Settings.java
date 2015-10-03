@@ -4531,7 +4531,6 @@ public final class Settings {
          * Current active provider
          * @hide
          */
-
         public static final String STATUS_BAR_CUSTOM_HEADER_PROVIDER = "status_bar_custom_header_provider";
 
 		/**
