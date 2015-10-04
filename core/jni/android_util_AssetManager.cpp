@@ -585,6 +585,11 @@ static jint android_content_AssetManager_addCommonOverlayPath(JNIEnv* env, jobje
         return 0;
     }
 
+    if (!access(packagePath8.c_str(), R_OK) == 0 ||
+        !access(resApkPath8.c_str(), R_OK) == 0) {
+        return 0;
+    }
+
     AssetManager* am = assetManagerForJavaObject(env, clazz);
     if (am == NULL) {
         return 0;
@@ -2271,7 +2276,7 @@ static JNINativeMethod gAssetManagerMethods[] = {
     { "getAssetAllocations", "()Ljava/lang/String;",
         (void*) android_content_AssetManager_getAssetAllocations },
     { "getGlobalAssetManagerCount", "()I",
-        (void*) android_content_AssetManager_getGlobalAssetCount },
+        (void*) android_content_AssetManager_getGlobalAssetManagerCount },
 };
 
 int register_android_content_AssetManager(JNIEnv* env)

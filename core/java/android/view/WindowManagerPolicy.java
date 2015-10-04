@@ -1200,6 +1200,11 @@ public interface WindowManagerPolicy {
     public boolean hasNavigationBar();
 
     /**
+     * Specifies whether the device needs a navigation bar (because it has no hardware buttons)
+     */
+    public boolean needsNavigationBar();
+
+    /**
      * Lock the device now.
      */
     public void lockNow(Bundle options);
@@ -1222,12 +1227,6 @@ public interface WindowManagerPolicy {
      * @hide
      */
     public void showGlobalActions();
-
-    /**
-     * Toggle global menu
-     * @hide
-     */
-    public void toggleGlobalMenu();
 
     /**
      * @return The current height of the input method window.
@@ -1278,4 +1277,11 @@ public interface WindowManagerPolicy {
      * @param fadeoutDuration the duration of the exit animation, in milliseconds
      */
     public void startKeyguardExitAnimation(long startTime, long fadeoutDuration);
+
+    /**
+     * Toggle global menu
+     *
+     * @hide
+     */
+    public void toggleGlobalMenu();
 }

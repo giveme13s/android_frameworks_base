@@ -149,6 +149,9 @@ public class Action {
                     || action.equals(SlimActionConstants.ACTION_MENU_BIG)) {
                 triggerVirtualKeypress(KeyEvent.KEYCODE_MENU, isLongpress);
                 return;
+            } else if (action.equals(SlimActionConstants.ACTION_MENU_LEGACY)) {
+                triggerVirtualKeypress(KeyEvent.KEYCODE_MENU, isLongpress);
+                return;
             } else if (action.equals(SlimActionConstants.ACTION_IME_NAVIGATION_LEFT)) {
                 triggerVirtualKeypress(KeyEvent.KEYCODE_DPAD_LEFT, isLongpress);
                 return;
@@ -316,6 +319,14 @@ public class Action {
                     }
                 }
                 return;
+            } else if (action.equals(SlimActionConstants.ACTION_TORCH)) {
+                try {
+                    ITorchService torchService = ITorchService.Stub.asInterface(
+                            ServiceManager.getService(Context.TORCH_SERVICE));
+                    torchService.toggleTorch();
+                } catch (RemoteException e) {
+                }
+                return;
             } else if (action.equals(SlimActionConstants.ACTION_CAMERA)) {
                 // ToDo: Send for secure keyguard secure camera intent.
                 // We need to add support for it first.
@@ -381,6 +392,7 @@ public class Action {
                 || action.equals(SlimActionConstants.ACTION_SEARCH)
                 || action.equals(SlimActionConstants.ACTION_MENU)
                 || action.equals(SlimActionConstants.ACTION_MENU_BIG)
+                || action.equals(SlimActionConstants.ACTION_MENU_LEGACY)
                 || action.equals(SlimActionConstants.ACTION_NULL)) {
             return true;
         }
@@ -410,10 +422,6 @@ public class Action {
                     Intent.FLAG_ACTIVITY_NEW_TASK
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP
                     | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            if (Settings.System.getInt(context.getContentResolver(),
-                    Settings.System.SLIM_ACTION_FLOATS, 0) == 1) {
-            intent.setFlags(Intent.FLAG_FLOATING_WINDOW);
-            }
             context.startActivityAsUser(intent,
                     new UserHandle(UserHandle.USER_CURRENT));
         }

@@ -41,6 +41,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -292,7 +293,7 @@ public class JobStore {
             try {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 XmlSerializer out = new FastXmlSerializer();
-                out.setOutput(baos, "utf-8");
+                out.setOutput(baos, StandardCharsets.UTF_8.name());
                 out.startDocument(null, true);
                 out.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
 
@@ -450,13 +451,13 @@ public class JobStore {
         private List<JobStatus> readJobMapImpl(FileInputStream fis)
                 throws XmlPullParserException, IOException {
             XmlPullParser parser = Xml.newPullParser();
-            parser.setInput(fis, null);
+            parser.setInput(fis, StandardCharsets.UTF_8.name());
 
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.START_TAG &&
                     eventType != XmlPullParser.END_DOCUMENT) {
                 eventType = parser.next();
-                Slog.d(TAG, parser.getName());
+                Slog.d(TAG, "Start tag: " + parser.getName());
             }
             if (eventType == XmlPullParser.END_DOCUMENT) {
                 if (DEBUG) {

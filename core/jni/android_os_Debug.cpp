@@ -34,10 +34,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <ctype.h>
-
-#ifdef HAVE_MALLOC_H
 #include <malloc.h>
-#endif
 
 namespace android
 {
@@ -128,32 +125,20 @@ struct stats_t {
 
 static jlong android_os_Debug_getNativeHeapSize(JNIEnv *env, jobject clazz)
 {
-#ifdef HAVE_MALLOC_H
     struct mallinfo info = mallinfo();
     return (jlong) info.usmblks;
-#else
-    return -1;
-#endif
 }
 
 static jlong android_os_Debug_getNativeHeapAllocatedSize(JNIEnv *env, jobject clazz)
 {
-#ifdef HAVE_MALLOC_H
     struct mallinfo info = mallinfo();
     return (jlong) info.uordblks;
-#else
-    return -1;
-#endif
 }
 
 static jlong android_os_Debug_getNativeHeapFreeSize(JNIEnv *env, jobject clazz)
 {
-#ifdef HAVE_MALLOC_H
     struct mallinfo info = mallinfo();
     return (jlong) info.fordblks;
-#else
-    return -1;
-#endif
 }
 
 // Container used to retrieve graphics memory pss
@@ -379,6 +364,8 @@ static void read_mapinfo(FILE *fp, stats_t* stats)
                 referenced = temp;
             } else if (line[0] == 'S' && sscanf(line, "Swap: %d kB", &temp) == 1) {
                 swapped_out = temp;
+            } else if (line[0] == 'A' || line[0] == 'K' || line[0] == 'M' || line[0] == 'L') {
+                continue;
             } else if (sscanf(line, "%" SCNx64 "-%" SCNx64 " %*s %*x %*x:%*x %*d", &start, &end) == 2) {
                 // looks like a new mapping
                 // example: "10000000-10001000 ---p 10000000 00:00 0"

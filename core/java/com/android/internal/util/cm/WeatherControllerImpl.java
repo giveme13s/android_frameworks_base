@@ -163,5 +163,4 @@ public class WeatherControllerImpl implements WeatherController {
         queryWeather();
         fireCallback();
     }
-
 }

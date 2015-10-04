@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (C) 2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@ import static org.xmlpull.v1.XmlPullParser.END_DOCUMENT;
 import static org.xmlpull.v1.XmlPullParser.END_TAG;
 import static org.xmlpull.v1.XmlPullParser.START_TAG;
 
+import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.ActivityManagerNative;
 import android.app.AppGlobals;
@@ -53,6 +55,9 @@ import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.AudioSystem;
 import android.media.IRingtonePlayer;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
@@ -113,12 +118,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -199,6 +206,9 @@ public class NotificationManagerService extends SystemService {
     private int mDefaultNotificationLedOff;
     private long[] mDefaultVibrationPattern;
 
+    private boolean mScreenOnEnabled = false;
+    private boolean mScreenOnDefault = false;
+
     private long[] mFallbackVibrationPattern;
     private boolean mUseAttentionLight;
     boolean mSystemReady;
@@ -260,6 +270,8 @@ public class NotificationManagerService extends SystemService {
     private NotificationListeners mListeners;
     private ConditionProviders mConditionProviders;
     private NotificationUsageStats mUsageStats;
+    private boolean mDisableDuckingWhileMedia;
+    private boolean mActiveMedia;
 
     private static final int MY_UID = Process.myUid();
     private static final int MY_PID = Process.myPid();
@@ -389,7 +401,7 @@ public class NotificationManagerService extends SystemService {
             try {
                 infile = mPolicyFile.openRead();
                 final XmlPullParser parser = Xml.newPullParser();
-                parser.setInput(infile, null);
+                parser.setInput(infile, StandardCharsets.UTF_8.name());
 
                 int type;
                 String tag;
@@ -447,7 +459,7 @@ public class NotificationManagerService extends SystemService {
 
             try {
                 final XmlSerializer out = new FastXmlSerializer();
-                out.setOutput(stream, "utf-8");
+                out.setOutput(stream, StandardCharsets.UTF_8.name());
                 out.startDocument(null, true);
                 out.startTag(null, TAG_BODY);
                 out.attribute(null, ATTR_VERSION, Integer.toString(DB_VERSION));
@@ -849,8 +861,14 @@ public class NotificationManagerService extends SystemService {
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.NOTIFICATION_LIGHT_PULSE_CUSTOM_VALUES),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.NOTIFICATION_LIGHT_SCREEN_ON),
+                    false, this, UserHandle.USER_ALL);
             resolver.registerContentObserver(MUTE_ANNOYING_NOTIFICATIONS_THRESHOLD_URI,
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.Global.ZEN_DISABLE_DUCKING_DURING_MEDIA_PLAYBACK), false,
+                    this, UserHandle.USER_ALL);
             update(null);
         }
 
@@ -890,6 +908,11 @@ public class NotificationManagerService extends SystemService {
                         UserHandle.USER_CURRENT));
             }
 
+            // Notification lights with screen on
+            mScreenOnEnabled = (Settings.System.getIntForUser(resolver,
+                    Settings.System.NOTIFICATION_LIGHT_SCREEN_ON,
+                    mScreenOnDefault ? 1 : 0, UserHandle.USER_CURRENT) != 0);
+
             if (uri == null || MUTE_ANNOYING_NOTIFICATIONS_THRESHOLD_URI.equals(uri)) {
                 mAnnoyingNotificationThreshold = Settings.System.getLongForUser(resolver,
                        Settings.System.MUTE_ANNOYING_NOTIFICATIONS_THRESHOLD, 0,
@@ -897,6 +920,22 @@ public class NotificationManagerService extends SystemService {
             }
 
             updateNotificationPulse();
+
+            mDisableDuckingWhileMedia = Settings.System.getInt(mContext.getContentResolver(),
+                    Settings.Global.ZEN_DISABLE_DUCKING_DURING_MEDIA_PLAYBACK, 0) == 1;
+            updateDisableDucking();
+        }
+    }
+
+    private void updateDisableDucking() {
+        if (!mSystemReady) {
+            return;
+        }
+        final MediaSessionManager mediaSessionManager = (MediaSessionManager) mContext
+                .getSystemService(Context.MEDIA_SESSION_SERVICE);
+        mediaSessionManager.removeOnActiveSessionsChangedListener(mSessionListener);
+        if (mDisableDuckingWhileMedia) {
+            mediaSessionManager.addOnActiveSessionsChangedListener(mSessionListener, null);
         }
     }
 
@@ -1016,6 +1055,7 @@ public class NotificationManagerService extends SystemService {
             mDisableNotificationEffects = true;
         }
         mZenModeHelper.readZenModeFromSetting();
+        mZenModeHelper.readLightsAllowedModeFromSetting();
         mInterruptionFilter = mZenModeHelper.getZenModeListenerInterruptionFilter();
 
         mUserProfiles.updateCache(getContext());
@@ -1083,6 +1123,7 @@ public class NotificationManagerService extends SystemService {
 
             // Grab our optional AudioService
             mAudioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            updateDisableDucking();
             mZenModeHelper.onSystemReady();
         } else if (phase == SystemService.PHASE_THIRD_PARTY_APPS_CAN_START) {
             // This observer will force an update when observe is called, causing us to
@@ -1303,6 +1344,19 @@ public class NotificationManagerService extends SystemService {
         public int getPackageVisibilityOverride(String pkg, int uid) {
             checkCallerIsSystem();
             return mRankingHelper.getPackageVisibilityOverride(pkg, uid);
+        }
+
+        @Override
+        public void setShowNotificationForPackageOnKeyguard(
+                String pkg, int uid, int status) {
+            checkCallerIsSystem();
+            mRankingHelper.setShowNotificationForPackageOnKeyguard(pkg, uid, status);
+            savePolicyFile();
+        }
+
+        @Override
+        public int getShowNotificationForPackageOnKeyguard(String pkg, int uid) {
+            return mRankingHelper.getShowNotificationForPackageOnKeyguard(pkg, uid);
         }
 
         /**
@@ -1857,6 +1911,9 @@ public class NotificationManagerService extends SystemService {
                 for (int i=0; i<N; i++) {
                     final NotificationRecord r = mNotificationList.get(i);
                     if (r.sbn.getPackageName().equals(pkg) && r.sbn.getUserId() == userId) {
+                        if (r.sbn.getId() == id && TextUtils.equals(r.sbn.getTag(), tag)) {
+                            break;  // Allow updating existing notification
+                        }
                         count++;
                         if (count >= MAX_PACKAGE_NOTIFICATIONS) {
                             Slog.e(TAG, "Package has already posted " + count
@@ -2026,6 +2083,21 @@ public class NotificationManagerService extends SystemService {
         }
     }
 
+    private MediaSessionManager.OnActiveSessionsChangedListener mSessionListener =
+            new MediaSessionManager.OnActiveSessionsChangedListener() {
+        @Override
+        public void onActiveSessionsChanged(@Nullable List<MediaController> controllers) {
+            for (MediaController activeSession : controllers) {
+                PlaybackState playbackState = activeSession.getPlaybackState();
+                if (playbackState != null && playbackState.getState() == PlaybackState.STATE_PLAYING) {
+                    mActiveMedia = true;
+                    return;
+                }
+            }
+            mActiveMedia = false;
+        }
+    };
+
     /**
      * Ensures that grouped notification receive their special treatment.
      *
@@ -2186,7 +2258,7 @@ public class NotificationManagerService extends SystemService {
                 hasValidSound = (soundUri != null);
             }
 
-            if (hasValidSound) {
+            if (hasValidSound && (!mDisableDuckingWhileMedia || !mActiveMedia)) {
                 boolean looping =
                         (notification.flags & Notification.FLAG_INSISTENT) != 0;
                 AudioAttributes audioAttributes = audioAttributesForNotification(notification);
@@ -2264,8 +2336,9 @@ public class NotificationManagerService extends SystemService {
         // light
         // release the light
         boolean wasShowLights = mLights.remove(record.getKey());
-        final boolean aboveThresholdWithLight = aboveThreshold || isLedNotificationForcedOn(record);
-        if ((notification.flags & Notification.FLAG_SHOW_LIGHTS) != 0 && aboveThresholdWithLight) {
+        final boolean canInterruptWithLight = canInterrupt || isLedNotificationForcedOn(record)
+                || (!canInterrupt && mZenModeHelper.getAreLightsAllowed());
+        if ((notification.flags & Notification.FLAG_SHOW_LIGHTS) != 0 && canInterruptWithLight) {
             mLights.add(record.getKey());
             updateLightsLocked();
             if (mUseAttentionLight) {
@@ -2883,7 +2956,7 @@ public class NotificationManagerService extends SystemService {
             enableLed = false;
         } else if (isLedNotificationForcedOn(ledNotification)) {
             enableLed = true;
-        } else if (mInCall || mScreenOn) {
+        } else if (!mScreenOnEnabled && (mInCall || mScreenOn)) {
             enableLed = false;
         } else {
             enableLed = true;
@@ -2975,19 +3048,8 @@ public class NotificationManagerService extends SystemService {
         final int len = list.size();
         for (int i=0; i<len; i++) {
             NotificationRecord r = list.get(i);
-            if (!notificationMatchesUserId(r, userId) || r.sbn.getId() != id) {
-                continue;
-            }
-            if (tag == null) {
-                if (r.sbn.getTag() != null) {
-                    continue;
-                }
-            } else {
-                if (!tag.equals(r.sbn.getTag())) {
-                    continue;
-                }
-            }
-            if (r.sbn.getPackageName().equals(pkg)) {
+            if (notificationMatchesUserId(r, userId) && r.sbn.getId() == id &&
+                    TextUtils.equals(r.sbn.getTag(), tag) && r.sbn.getPackageName().equals(pkg)) {
                 return i;
             }
         }

@@ -239,12 +239,12 @@ public final class ActivityStackSupervisor implements DisplayListener {
      * setWindowManager is called. **/
     private boolean mLeanbackOnlyDevice;
 
+    private PowerManager mPm;
+
     /**
      * Is the privacy guard currently enabled? Shared between ActivityStacks
      */
     String mPrivacyGuardPackageName = null;
-
-    PowerManager mPm;
 
     /**
      * We don't want to allow the device to go to sleep while in the process
@@ -1899,7 +1899,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                             }
                             options = null;
                             movedToFront = true;
-                        }             
+                        }
                     }
                     // If the caller has requested that the target task be
                     // reset, then do so.

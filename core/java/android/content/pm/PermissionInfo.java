@@ -129,14 +129,6 @@ public class PermissionInfo extends PackageItemInfo implements Parcelable {
      */
     public CharSequence nonLocalizedDescription;
 
-    /**
-     * Whether this permission will be granted to apps signed with white-listed keys in
-     * /system/etc/permissions/someapp.xml
-     *
-     * @hide
-     */
-    public boolean allowViaWhitelist;
-
     /** @hide */
     public static int fixProtectionLevel(int level) {
         if (level == PROTECTION_SIGNATURE_OR_SYSTEM) {
@@ -184,7 +176,6 @@ public class PermissionInfo extends PackageItemInfo implements Parcelable {
         group = orig.group;
         descriptionRes = orig.descriptionRes;
         nonLocalizedDescription = orig.nonLocalizedDescription;
-        allowViaWhitelist = orig.allowViaWhitelist;
     }
 
     /**
@@ -227,7 +218,6 @@ public class PermissionInfo extends PackageItemInfo implements Parcelable {
         dest.writeInt(flags);
         dest.writeString(group);
         dest.writeInt(descriptionRes);
-        dest.writeInt(allowViaWhitelist ? 1 : 0);
         TextUtils.writeToParcel(nonLocalizedDescription, dest, parcelableFlags);
     }
 
@@ -247,7 +237,6 @@ public class PermissionInfo extends PackageItemInfo implements Parcelable {
         flags = source.readInt();
         group = source.readString();
         descriptionRes = source.readInt();
-        allowViaWhitelist = source.readInt() == 1;
         nonLocalizedDescription = TextUtils.CHAR_SEQUENCE_CREATOR.createFromParcel(source);
     }
 }

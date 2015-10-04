@@ -366,6 +366,12 @@ public class PrintActivity extends Activity implements RemotePrintDocument.Updat
     }
 
     @Override
+    protected void onDestroy() {
+        doFinish();
+        super.onDestroy();
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             event.startTracking();
@@ -650,9 +656,11 @@ public class PrintActivity extends Activity implements RemotePrintDocument.Updat
             }
         }
 
-        PrinterId printerId = mCurrentPrinter.getId();
-        final int index = mDestinationSpinnerAdapter.getPrinterIndex(printerId);
-        mDestinationSpinner.setSelection(index);
+        if (mCurrentPrinter != null) {
+            PrinterId printerId = mCurrentPrinter.getId();
+            final int index = mDestinationSpinnerAdapter.getPrinterIndex(printerId);
+            mDestinationSpinner.setSelection(index);
+        }
     }
 
     private void startAdvancedPrintOptionsActivity(PrinterInfo printer) {

@@ -136,6 +136,7 @@ import libcore.net.event.NetworkEventDispatcher;
 import dalvik.system.CloseGuard;
 import dalvik.system.VMDebug;
 import dalvik.system.VMRuntime;
+import org.apache.harmony.dalvik.ddmc.DdmVmInternal;
 
 final class RemoteServiceException extends AndroidRuntimeException {
     public RemoteServiceException(String msg) {
@@ -447,6 +448,7 @@ public final class ActivityThread {
         IUiAutomationConnection instrumentationUiAutomationConnection;
         int debugMode;
         boolean enableOpenGlTrace;
+        boolean trackAllocation;
         boolean restrictedBackupMode;
         boolean persistent;
         Configuration config;
@@ -760,9 +762,9 @@ public final class ActivityThread {
                 ProfilerInfo profilerInfo, Bundle instrumentationArgs,
                 IInstrumentationWatcher instrumentationWatcher,
                 IUiAutomationConnection instrumentationUiConnection, int debugMode,
-                boolean enableOpenGlTrace, boolean isRestrictedBackupMode, boolean persistent,
-                Configuration config, CompatibilityInfo compatInfo, Map<String, IBinder> services,
-                Bundle coreSettings) {
+                boolean enableOpenGlTrace, boolean trackAllocation, boolean isRestrictedBackupMode,
+                boolean persistent, Configuration config, CompatibilityInfo compatInfo,
+                Map<String, IBinder> services, Bundle coreSettings) {
 
             if (services != null) {
                 // Setup the service cache in the ServiceManager
@@ -818,6 +820,7 @@ public final class ActivityThread {
             data.instrumentationUiAutomationConnection = instrumentationUiConnection;
             data.debugMode = debugMode;
             data.enableOpenGlTrace = enableOpenGlTrace;
+            data.trackAllocation = trackAllocation;
             data.restrictedBackupMode = isRestrictedBackupMode;
             data.persistent = persistent;
             data.config = config;
@@ -1667,7 +1670,7 @@ public final class ActivityThread {
             LoadedApk pkgInfo, Context context, String pkgName) {
         return mResourcesManager.getTopLevelResources(resDir, splitResDirs, overlayDirs, libDirs,
                 displayId, pkgName, overrideConfiguration, pkgInfo.getCompatibilityInfo(), null,
-                context);
+                context, pkgInfo.getApplicationInfo().isThemeable);
     }
 
     /**
@@ -1676,7 +1679,8 @@ public final class ActivityThread {
     Resources getTopLevelThemedResources(String resDir, int displayId, LoadedApk pkgInfo,
                                          String pkgName, String themePkgName) {
         return mResourcesManager.getTopLevelThemedResources(resDir, displayId, pkgName,
-                themePkgName, pkgInfo.getCompatibilityInfo(), null);
+                themePkgName, pkgInfo.getCompatibilityInfo(), null,
+                pkgInfo.getApplicationInfo().isThemeable);
     }
 
     final Handler getHandler() {
@@ -2182,18 +2186,6 @@ public final class ActivityThread {
 
     public final Activity getActivity(IBinder token) {
         return mActivities.get(token).activity;
-    }
-
-    protected void performFinishFloating() {
-        synchronized (mPackages) {
-            Activity a = null;
-            for (ActivityClientRecord ar : mActivities.values()) {
-                a = ar.activity;
-                if (a != null && !a.mFinished && a.getWindow() != null && a.getWindow().mIsFloatingWindow) {
-                    a.finish();
-                }
-            }
-        }
     }
 
     public final void sendActivityResult(
@@ -3025,12 +3017,12 @@ public final class ActivityThread {
                 r.state = null;
                 r.persistentState = null;
             } catch (Exception e) {
-                /*if (!mInstrumentation.onException(r.activity, e)) {
+                if (!mInstrumentation.onException(r.activity, e)) {
                     throw new RuntimeException(
                         "Unable to resume activity "
                         + r.intent.getComponent().toShortString()
                         + ": " + e.toString(), e);
-                }*/
+                }
             }
         }
         return r;
@@ -4169,7 +4161,9 @@ public final class ActivityThread {
             boolean hasFontConfigChange = ((configDiff & ActivityInfo.CONFIG_THEME_FONT) != 0);
             if (hasLocaleConfigChange || hasFontConfigChange) {
                 Canvas.freeTextLayoutCaches();
-                Typeface.recreateDefaults();
+                if (hasFontConfigChange) {
+                    Typeface.recreateDefaults();
+                }
                 if (DEBUG_CONFIGURATION) Slog.v(TAG, "Cleared TextLayout Caches");
             }
         }
@@ -4226,6 +4220,13 @@ public final class ActivityThread {
             } catch (IOException e) {
                 Slog.w(TAG, "Managed heap dump failed on path " + dhd.path
                         + " -- can the process access this path?");
+            } catch (RuntimeException e) {
+                // Throw exception for non-system process for notifying unable dump reason to do error handle.
+                ActivityThread am = currentActivityThread();
+                if (am == null || !am.mSystemThread) {
+                    throw new RuntimeException("Unable to dump heap on path " + dhd.path
+                        + ": " + e.toString(), e);
+                }
             } finally {
                 try {
                     dhd.fd.close();
@@ -4334,6 +4335,10 @@ public final class ActivityThread {
     }
 
     private void handleBindApplication(AppBindData data) {
+        if (data.trackAllocation) {
+            DdmVmInternal.enableRecentAllocations(true);
+        }
+
         mBoundApplication = data;
         mConfiguration = new Configuration(data.config);
         mCompatConfiguration = new Configuration(data.config);

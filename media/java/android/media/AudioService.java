@@ -129,10 +129,10 @@ public class AudioService extends IAudioService.Stub {
     private static final boolean DEBUG_SESSIONS = Log.isLoggable(TAG + ".SESSIONS", Log.DEBUG);
 
     /** Allow volume changes to set ringer mode to silent? */
-    private static final boolean VOLUME_SETS_RINGER_MODE_SILENT = false;
+    private static final boolean VOLUME_SETS_RINGER_MODE_SILENT = true;
 
     /** In silent mode, are volume adjustments (raises) prevented? */
-    private static final boolean PREVENT_VOLUME_ADJUSTMENT_IF_SILENT = true;
+    private static final boolean PREVENT_VOLUME_ADJUSTMENT_IF_SILENT = false;
 
     /** How long to delay before persisting a change in volume/ringer mode. */
     private static final int PERSIST_DELAY = 500;
@@ -1739,11 +1739,25 @@ public class AudioService extends IAudioService.Stub {
         }
         int streamAlias = mStreamVolumeAlias[streamType];
         if (isStreamAffectedByMute(streamAlias)) {
+
+            int dtmfStreamAlias;
+
+            switch (mPlatformType) {
+            case PLATFORM_VOICE:
+                dtmfStreamAlias = AudioSystem.STREAM_RING;
+                break;
+            case PLATFORM_TELEVISION:
+                dtmfStreamAlias = AudioSystem.STREAM_MUSIC;
+                break;
+            default:
+                dtmfStreamAlias = AudioSystem.STREAM_RING;
+            }
+
             if (streamAlias == AudioSystem.STREAM_MUSIC) {
                 setSystemAudioMute(state);
             }
             for (int stream = 0; stream < mStreamStates.length; stream++) {
-                if (streamAlias == mStreamVolumeAlias[stream]) {
+                if (streamAlias == ((stream == AudioSystem.STREAM_DTMF)? dtmfStreamAlias : mStreamVolumeAlias[stream])) {
                     mStreamStates[stream].mute(cb, state);
 
                     Intent intent = new Intent(AudioManager.STREAM_MUTE_CHANGED_ACTION);
@@ -1996,7 +2010,6 @@ public class AudioService extends IAudioService.Stub {
         ensureValidStreamType(streamType);
         return (mStreamStates[streamType].getMaxIndex() + 5) / 10;
     }
-
     /** @see AudioManager#setStreamMaxVolume(int,int) */
     public void setStreamMaxVolume(int streamType, int maxVol) {
         ensureValidStreamType(streamType);
@@ -2158,6 +2171,15 @@ public class AudioService extends IAudioService.Stub {
                                 entry.setValue(10);
                             }
                         }
+                        // Persist volume for stream when ringer mode changed
+                        final int device = getDeviceForStream(streamType);
+                        sendMsg(mAudioHandler,
+                            MSG_PERSIST_VOLUME,
+                            SENDMSG_QUEUE,
+                            device,
+                            0,
+                            mStreamStates[streamType],
+                            PERSIST_DELAY);
                     }
                     // Post a persist volume msg to save that changed volume
                     int device = getDeviceForStream(streamType);
@@ -3345,6 +3367,9 @@ public class AudioService extends IAudioService.Stub {
         int result = FLAG_ADJUST_VOLUME;
         int ringerMode = getRingerModeInternal();
 
+        if (DEBUG_VOL)
+            Log.d(TAG, "checkForRingerModeChange oldIndex = " + oldIndex + " direction = " + direction + " step = " + step + " mPrevVolDirection = " + mPrevVolDirection);
+
         switch (ringerMode) {
         case RINGER_MODE_NORMAL:
             if (direction == AudioManager.ADJUST_LOWER) {
@@ -3910,7 +3935,6 @@ public class AudioService extends IAudioService.Stub {
         public int getMaxIndex() {
             return mIndexMax;
         }
-
         public void setMaxIndex(int maxVol) {
              mIndexMax = maxVol;
              AudioSystem.initStreamVolume(mStreamType, 0, mIndexMax);

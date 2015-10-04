@@ -534,6 +534,7 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv)
 {
     int result = -1;
     JavaVMInitArgs initArgs;
+    char zygoteMaxFailedBootsBuf[sizeof("-XzygoteMaxFailedBoots")-1 + PROPERTY_VALUE_MAX];
     char propBuf[PROPERTY_VALUE_MAX];
     char stackTraceFileBuf[sizeof("-Xstacktracefile:")-1 + PROPERTY_VALUE_MAX];
     char dexoptFlagsBuf[PROPERTY_VALUE_MAX];
@@ -664,6 +665,10 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv)
      */
     parseRuntimeOption("dalvik.vm.heapstartsize", heapstartsizeOptsBuf, "-Xms", "4m");
     parseRuntimeOption("dalvik.vm.heapsize", heapsizeOptsBuf, "-Xmx", "16m");
+
+    parseRuntimeOption("dalvik.vm.zygotemaxfailedboots",
+                       zygoteMaxFailedBootsBuf,
+                       "-XzygoteMaxFailedBoots:");
 
     // Increase the main thread's interpreter stack size for bug 6315322.
     addOption("-XX:mainThreadStackSize=24K");
@@ -895,16 +900,16 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv)
     }
 
     /*
-     * When running with debug.gencfi, add --include-cfi to the compiler options so that the boot
-     * image, if it is compiled on device, will include CFI info, as well as other compilations
-     * started by the runtime.
+     * When running with debug.generate-debug-info, add --generate-debug-info to
+     * the compiler options so that the boot image, if it is compiled on device,
+     * will include native debugging information.
      */
-    property_get("debug.gencfi", propBuf, "");
+    property_get("debug.generate-debug-info", propBuf, "");
     if (strcmp(propBuf, "true") == 0) {
         addOption("-Xcompiler-option");
-        addOption("--include-cfi");
+        addOption("--generate-debug-info");
         addOption("-Ximage-compiler-option");
-        addOption("--include-cfi");
+        addOption("--generate-debug-info");
     }
 
     initArgs.version = JNI_VERSION_1_4;
@@ -1442,20 +1447,10 @@ AndroidRuntime* AndroidRuntime::getRuntime()
 }
 
 /**
- * Used by WithFramework to register native functions.
+ * Used by surface flinger's DdmConnection to register native methods from
+ * the framework.
  */
-extern "C"
-jint Java_com_android_internal_util_WithFramework_registerNatives(
-        JNIEnv* env, jclass clazz) {
+extern "C" jint registerFrameworkNatives(JNIEnv* env) {
     return register_jni_procs(gRegJNI, NELEM(gRegJNI), env);
 }
-
-/**
- * Used by LoadClass to register native functions.
- */
-extern "C"
-jint Java_LoadClass_registerNatives(JNIEnv* env, jclass clazz) {
-    return register_jni_procs(gRegJNI, NELEM(gRegJNI), env);
-}
-
 }   // namespace android

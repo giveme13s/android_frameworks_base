@@ -666,7 +666,8 @@ class MountService extends IMountService.Stub
             final UserHandle user = new UserHandle(userId);
 
             final String action = intent.getAction();
-            if (Intent.ACTION_USER_ADDED.equals(action)) {
+            // Create an emulated volume for the new user only if the volume is emulated
+            if (Intent.ACTION_USER_ADDED.equals(action) && isExternalStorageEmulated()) {
                 synchronized (mVolumesLock) {
                     createEmulatedVolumeForUserLocked(user);
                 }
@@ -1078,6 +1079,9 @@ class MountService extends IMountService.Stub
         } else if (newState == VolumeState.NoMedia) {
             // NoMedia is handled via Disk Remove events
         } else if (newState == VolumeState.Idle) {
+            synchronized (mVolumesLock) {
+                volume.setIsFormatting(false);
+            }
             /*
              * Don't notify if we're in BAD_REMOVAL, NOFS, UNMOUNTABLE, or
              * if we're in the process of enabling UMS
@@ -1686,8 +1690,13 @@ class MountService extends IMountService.Stub
 
                 if (state.equals(Environment.MEDIA_MOUNTED)) {
                     // Post a unmount message.
-                    ShutdownCallBack ucb = new ShutdownCallBack(path, mountShutdownLatch);
-                    mHandler.sendMessage(mHandler.obtainMessage(H_UNMOUNT_PM_UPDATE, ucb));
+                    final StorageVolume volume = mVolumesByPath.get(path);
+                    if (volume.isEmulated()) {
+                        mountShutdownLatch.countDown();
+                    } else {
+                        ShutdownCallBack ucb = new ShutdownCallBack(path, mountShutdownLatch);
+                        mHandler.sendMessage(mHandler.obtainMessage(H_UNMOUNT_PM_UPDATE, ucb));
+                    }
                 } else if (observer != null) {
                     /*
                      * Count down, since nothing will be done. The observer will be

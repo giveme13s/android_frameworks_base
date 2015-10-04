@@ -24,6 +24,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.os.Build;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.util.AttributeSet;
 import android.util.Slog;
@@ -45,7 +46,7 @@ public class MSimSignalClusterView
         extends LinearLayout
         implements MSimNetworkControllerImpl.MSimSignalCluster {
 
-    static final boolean DEBUG = true;
+    static final boolean DEBUG = false;
     static final String TAG = "MSimSignalClusterView";
 
     private final int STATUS_BAR_STYLE_ANDROID_DEFAULT = 0;
@@ -64,8 +65,10 @@ public class MSimSignalClusterView
     private int[] mMobileStrengthId;
     private int[] mMobileActivityId;
     private int[] mMobileTypeId;
+    private int[] mMobileRoamId;
     private int[] mNoSimIconId;
     private boolean mIsAirplaneMode = false;
+    private boolean mShowNoSimSlots = true;
     private int mAirplaneIconId = 0;
     private String mWifiDescription, mMobileTypeDescription;
     private String[] mMobileDescription;
@@ -75,6 +78,7 @@ public class MSimSignalClusterView
     ImageView mWifi, mWifiActivity, mAirplane;
     ImageView[] mNoSimSlot;
     ImageView[] mMobile;
+    ImageView[] mMobileRoam;
     ImageView[] mMobileActivity;
     ImageView[] mMobileType;
 
@@ -105,6 +109,8 @@ public class MSimSignalClusterView
 
     private int[] mMobileGroupResourceId = {R.id.mobile_combo, R.id.mobile_combo_sub2,
                                           R.id.mobile_combo_sub3};
+    private int[] mMobileRoamResourceId = {R.id.mobile_roaming, R.id.mobile_roaming_sub2,
+                                              R.id.mobile_roaming_sub3 };
     private int[] mMobileResourceId = {R.id.mobile_signal, R.id.mobile_signal_sub2,
                                      R.id.mobile_signal_sub3};
     private int[] mMobileActResourceId = {R.id.mobile_inout, R.id.mobile_inout_sub2,
@@ -137,12 +143,14 @@ public class MSimSignalClusterView
         mMobileStrengthId = new int[mNumPhones];
         mMobileDescription = new String[mNumPhones];
         mMobileTypeId = new int[mNumPhones];
+        mMobileRoamId = new int[mNumPhones];
         mMobileActivityId = new int[mNumPhones];
         mNoSimIconId = new int[mNumPhones];
         mMobileGroup = new ViewGroup[mNumPhones];
         mNoSimSlot = new ImageView[mNumPhones];
         mMobile = new ImageView[mNumPhones];
         mMobileActivity = new ImageView[mNumPhones];
+        mMobileRoam = new ImageView[mNumPhones];
         mMobileType = new ImageView[mNumPhones];
         mDataVisible = new boolean[mNumPhones];
         mDataActivityId = new int[mNumPhones];
@@ -157,6 +165,7 @@ public class MSimSignalClusterView
         for (int i=0; i < mNumPhones; i++) {
             mMobileStrengthId[i] = 0;
             mMobileTypeId[i] = 0;
+            mMobileRoamId[i] = 0;
             mMobileActivityId[i] = 0;
             mNoSimIconId[i] = 0;
 
@@ -190,6 +199,7 @@ public class MSimSignalClusterView
         for (int i = 0; i < mNumPhones; i++) {
             mMobileGroup[i]    = (ViewGroup) findViewById(mMobileGroupResourceId[i]);
             mMobile[i]         = (ImageView) findViewById(mMobileResourceId[i]);
+            mMobileRoam[i]     = (ImageView) findViewById(mMobileRoamResourceId[i]);
             mMobileActivity[i] = (ImageView) findViewById(mMobileActResourceId[i]);
             mMobileType[i]     = (ImageView) findViewById(mMobileTypeResourceId[i]);
             mNoSimSlot[i]      = (ImageView) findViewById(mNoSimSlotResourceId[i]);
@@ -209,6 +219,8 @@ public class MSimSignalClusterView
         mMobileCdma3g       = (ImageView) findViewById(R.id.mobile_signal_3g);
         mMobileCdma1x       = (ImageView) findViewById(R.id.mobile_signal_1x);
         mMobileCdma1xOnly   = (ImageView) findViewById(R.id.mobile_signal_1x_only);
+
+        setShowEmptySimSlots(mShowNoSimSlots);
 
         for (int i = 0; i < mNumPhones; i++) {
             apply(i);
@@ -256,12 +268,13 @@ public class MSimSignalClusterView
 
     @Override
     public void setMobileDataIndicators(boolean visible, int strengthIcon, int activityIcon,
-            int typeIcon, String contentDescription, String typeContentDescription,
+            int typeIcon, int roamingIcon, String contentDescription, String typeContentDescription,
             int phoneId, int noSimIcon) {
         mMobileVisible = visible;
         mMobileStrengthId[phoneId] = strengthIcon;
         mMobileTypeId[phoneId] = typeIcon;
         mMobileActivityId[phoneId] = activityIcon;
+        mMobileRoamId[phoneId] = roamingIcon;
         mMobileDescription[phoneId] = contentDescription;
         mMobileTypeDescription = typeContentDescription;
         mNoSimIconId[phoneId] = noSimIcon;
@@ -341,6 +354,16 @@ public class MSimSignalClusterView
         mAirplaneIconId = airplaneIconId;
         for (int i = 0; i < mNumPhones; i++) {
             apply(i);
+        }
+    }
+
+    @Override
+    public void setShowEmptySimSlots(boolean show) {
+        mShowNoSimSlots = show;
+        if (mWifiGroup != null) {
+            for (int i = 0; i < mNumPhones; i++) {
+                mNoSimSlot[i].setVisibility(show ? View.VISIBLE : View.GONE);
+            }
         }
     }
 
@@ -437,11 +460,17 @@ public class MSimSignalClusterView
             updateData(phoneId);
             updateDataVoice(phoneId);
             mMobileGroup[phoneId].setVisibility(View.VISIBLE);
+            if (SystemProperties.getBoolean("ro.config.always_show_roaming", false)) {
+                mMobileRoam[phoneId].setVisibility(View.VISIBLE);
+            }
         } else {
             mMobileGroup[phoneId].setVisibility(View.GONE);
             mMobileCdmaGroup.setVisibility(View.GONE);
             mMobileCdma1xOnly.setVisibility(View.GONE);
             mDataGroup[phoneId].setVisibility(View.GONE);
+            if (SystemProperties.getBoolean("ro.config.always_show_roaming", false)) {
+                mMobileRoam[phoneId].setVisibility(View.GONE);
+            }
         }
 
         if (mIsAirplaneMode) {
@@ -475,7 +504,6 @@ public class MSimSignalClusterView
 
         if (phoneId != 0) {
             if (mMobileVisible && mWifiVisible && ((mIsAirplaneMode) ||
-                    (mNoSimIconId[phoneId] != 0) ||
                     (mStyle != STATUS_BAR_STYLE_ANDROID_DEFAULT))) {
                 mSpacer.setVisibility(View.INVISIBLE);
             } else {
@@ -491,6 +519,7 @@ public class MSimSignalClusterView
         mMobileActivity[phoneId].setImageResource(mMobileActivityId[phoneId]);
         mMobileType[phoneId].setImageResource(mMobileTypeId[phoneId]);
         mNoSimSlot[phoneId].setImageResource(mNoSimIconId[phoneId]);
+        mMobileRoam[phoneId].setImageResource(mMobileRoamId[phoneId]);
     }
 
     private void updateCdma() {

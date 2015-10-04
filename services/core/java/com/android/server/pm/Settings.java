@@ -1925,9 +1925,6 @@ final class Settings {
                     }
                 }
             }
-            if (bp.allowViaWhitelist) {
-                serializer.attribute(null, "allowViaWhitelist", Integer.toString(1));
-            }
             serializer.endTag(null, TAG_ITEM);
         }
     }
@@ -2392,6 +2389,11 @@ final class Settings {
             for (int i=0; i<ri.size(); i++) {
                 ActivityInfo ai = ri.get(i).activityInfo;
                 set[i] = new ComponentName(ai.packageName, ai.name);
+                // We have already discovered the best third party match,
+                // so we only need to finish filling set with all results.
+                if (haveNonSys != null) {
+                    continue;
+                }
                 if ((ai.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM) == 0) {
                     if (ri.get(i).match >= thirdPartyMatch) {
                         // Keep track of the best match we find of all third
@@ -2400,7 +2402,6 @@ final class Settings {
                         if (PackageManagerService.DEBUG_PREFERRED) Log.d(TAG, "Result "
                                 + ai.packageName + "/" + ai.name + ": non-system!");
                         haveNonSys = set[i];
-                        break;
                     }
                 } else if (cn.getPackageName().equals(ai.packageName)
                         && cn.getClassName().equals(ai.name)) {
@@ -2545,8 +2546,6 @@ final class Settings {
                     bp.protectionLevel = readInt(parser, null, "protection",
                             PermissionInfo.PROTECTION_NORMAL);
                     bp.protectionLevel = PermissionInfo.fixProtectionLevel(bp.protectionLevel);
-                    bp.allowViaWhitelist = readInt(parser, null,
-                            "allowViaWhitelist", 0) == 1;
                     if (dynamic) {
                         PermissionInfo pi = new PermissionInfo();
                         pi.packageName = sourcePackage.intern();
@@ -2554,7 +2553,6 @@ final class Settings {
                         pi.icon = readInt(parser, null, "icon", 0);
                         pi.nonLocalizedLabel = parser.getAttributeValue(null, "label");
                         pi.protectionLevel = bp.protectionLevel;
-                        pi.allowViaWhitelist = bp.allowViaWhitelist;
                         bp.pendingInfo = pi;
                     }
                     out.put(bp.name, bp);

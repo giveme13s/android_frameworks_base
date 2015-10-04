@@ -72,10 +72,6 @@ public class AppOpsManager {
      * will do this for you).
      */
 
-    /** {@hide */
-    public static final String ACTION_SU_SESSION_CHANGED =
-            "android.intent.action.SU_SESSION_CHANGED";
-
     final Context mContext;
     final IAppOpsService mService;
     final ArrayMap<OnOpChangedListener, IAppOpsCallback> mModeWatchers
@@ -248,11 +244,7 @@ public class AppOpsManager {
     /** @hide */
     public static final int OP_DATA_CONNECT_CHANGE = 59;
     /** @hide */
-    public static final int OP_ALARM_WAKEUP = 60;
-    /** @hide */
-    public static final int OP_SU = 61;
-    /** @hide */
-    public static final int _NUM_OP = 62;
+    public static final int _NUM_OP = 60;
 
     /** Access to coarse location information. */
     public static final String OPSTR_COARSE_LOCATION =
@@ -381,10 +373,6 @@ public class AppOpsManager {
             "android:delete_call_log";
     private static final String OPSTR_DATA_CONNECT_CHANGE =
             "android:data_connect_change";
-    private static final String OPSTR_ALARM_WAKEUP =
-            "android:alarm_wakeup";
-    private static final String OPSTR_SU =
-            "android:su";
 
     /**
      * This maps each operation to the operation that serves as the
@@ -455,8 +443,6 @@ public class AppOpsManager {
             OP_DELETE_CONTACTS,
             OP_DELETE_CALL_LOG,
             OP_DATA_CONNECT_CHANGE,
-            OP_ALARM_WAKEUP,
-            OP_SU
     };
 
     /**
@@ -524,8 +510,6 @@ public class AppOpsManager {
             null,
             null,
             null,
-            null,
-            OPSTR_SU,
     };
 
     /**
@@ -593,8 +577,6 @@ public class AppOpsManager {
         OPSTR_DELETE_CONTACTS,
         OPSTR_DELETE_CALL_LOG,
         OPSTR_DATA_CONNECT_CHANGE,
-        OPSTR_ALARM_WAKEUP,
-        OPSTR_SU,
     };
 
     /**
@@ -662,8 +644,6 @@ public class AppOpsManager {
             "DELETE_CONTACTS",
             "DELETE_CALL_LOG",
             "DATA_CONNECT_CHANGE",
-            "ALARM_WAKEUP",
-            "SU",
     };
 
     /**
@@ -731,8 +711,6 @@ public class AppOpsManager {
             android.Manifest.permission.WRITE_CONTACTS,
             android.Manifest.permission.WRITE_CALL_LOG,
             android.Manifest.permission.MODIFY_PHONE_STATE,
-            null, // OP_ALARM_WAKEUP
-            null,
     };
 
     /**
@@ -801,8 +779,6 @@ public class AppOpsManager {
             null, //DELETE_CONTACTS
             null, //DELETE_CALL_LOG
             null, //DATA_CONNECT_CHANGE
-            null, //ALARM_WAKEUP
-            UserManager.DISALLOW_SU, //SU TODO: this should really be investigated.
     };
 
     /**
@@ -870,8 +846,6 @@ public class AppOpsManager {
             false, //DELETE_CONTACTS
             false, //DELETE_CALL_LOG
             false, //DATA_CONNECT_CHANGE
-            true, //ALARM_WAKEUP
-            false, //SU
     };
 
     /**
@@ -938,8 +912,6 @@ public class AppOpsManager {
             AppOpsManager.MODE_ALLOWED,
             AppOpsManager.MODE_ALLOWED,
             AppOpsManager.MODE_ALLOWED,
-            AppOpsManager.MODE_ALLOWED, // OP_ALARM_WAKEUP
-            AppOpsManager.MODE_ASK, // OP_SU
     };
 
     /**
@@ -1007,8 +979,6 @@ public class AppOpsManager {
             AppOpsManager.MODE_ASK,     // OP_DELETE_CONTACTS
             AppOpsManager.MODE_ASK,     // OP_DELETE_CALL_LOG
             AppOpsManager.MODE_ASK,     // OP_DATA_CONNECT_CHANGE
-            AppOpsManager.MODE_ALLOWED, // OP_ALARM_WAKEUP
-            AppOpsManager.MODE_ASK,     // OP_SU
     };
 
     /**
@@ -1075,8 +1045,6 @@ public class AppOpsManager {
         true,     // OP_DELETE_CONTACTS
         true,     // OP_DELETE_CALL_LOG
         true,     // OP_DATA_CONNECT_CHANGE
-        false,    // OP_ALARM_WAKEUP
-        true,     // OP_SU
     };
 
     /**
@@ -1147,8 +1115,6 @@ public class AppOpsManager {
             false,     // OP_DELETE_CONTACTS
             false,     // OP_DELETE_CALL_LOG
             false,     // OP_DATA_CONNECT_CHANGE
-            false,     // OP_ALARM_WAKEUP
-            false,     // OP_SU
     };
 
     private static HashMap<String, Integer> sOpStrToOp = new HashMap<String, Integer>();
@@ -1368,18 +1334,13 @@ public class AppOpsManager {
         private final long mTime;
         private final long mRejectTime;
         private final int mDuration;
-        private final int mAllowedCount;
-        private final int mIgnoredCount;
 
-        public OpEntry(int op, int mode, long time, long rejectTime, int duration,
-                int allowedCount, int ignoredCount) {
+        public OpEntry(int op, int mode, long time, long rejectTime, int duration) {
             mOp = op;
             mMode = mode;
             mTime = time;
             mRejectTime = rejectTime;
             mDuration = duration;
-            mAllowedCount = allowedCount;
-            mIgnoredCount = ignoredCount;
         }
 
         public int getOp() {
@@ -1406,14 +1367,6 @@ public class AppOpsManager {
             return mDuration == -1 ? (int)(System.currentTimeMillis()-mTime) : mDuration;
         }
 
-        public int getAllowedCount() {
-            return mAllowedCount;
-        }
-
-        public int getIgnoredCount() {
-            return mIgnoredCount;
-        }
-
         @Override
         public int describeContents() {
             return 0;
@@ -1426,8 +1379,6 @@ public class AppOpsManager {
             dest.writeLong(mTime);
             dest.writeLong(mRejectTime);
             dest.writeInt(mDuration);
-            dest.writeInt(mAllowedCount);
-            dest.writeInt(mIgnoredCount);
         }
 
         OpEntry(Parcel source) {
@@ -1436,8 +1387,6 @@ public class AppOpsManager {
             mTime = source.readLong();
             mRejectTime = source.readLong();
             mDuration = source.readInt();
-            mAllowedCount = source.readInt();
-            mIgnoredCount = source.readInt();
         }
 
         public static final Creator<OpEntry> CREATOR = new Creator<OpEntry>() {
@@ -1980,11 +1929,4 @@ public class AppOpsManager {
         }
     }
 
-    /** @hide */
-    public void resetCounters() {
-        try {
-            mService.resetCounters();
-        } catch (RemoteException e) {
-        }
-    }
 }

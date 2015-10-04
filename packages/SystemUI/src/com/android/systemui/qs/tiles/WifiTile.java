@@ -87,6 +87,11 @@ public class WifiTile extends QSTile<QSTile.SignalState> {
     }
 
     @Override
+    protected void handleLongClick() {
+        mHost.startSettingsActivity(WIFI_SETTINGS);
+    }
+
+    @Override
     protected void handleSecondaryClick() {
         if (!mWifiController.canConfigWifi()) {
             mHost.startSettingsActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
@@ -97,11 +102,6 @@ public class WifiTile extends QSTile<QSTile.SignalState> {
             mState.enabled = true;
         }
         showDetail(true);
-    }
-
-    @Override
-    protected void handleLongClick() {
-        mHost.startSettingsActivity(WIFI_SETTINGS);
     }
 
     @Override

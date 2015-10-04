@@ -46,9 +46,9 @@ static struct {
     jfieldID bottom;
 } gRectClassInfo;
 
-static Mutex sLock;
+Mutex sLock;
 
-static int sUnmatchedInitRequestCount = 0;
+int sUnmatchedInitRequestCount = 0;
 
 static void initializeLibraryIfNeeded() {
     Mutex::Autolock _l(sLock);
@@ -150,7 +150,7 @@ static bool writeAllBytes(const int fd, const void* buffer, const size_t byteCou
 static int writeBlock(FPDF_FILEWRITE* owner, const void* buffer, unsigned long size) {
     const PdfToFdWriter* writer = reinterpret_cast<PdfToFdWriter*>(owner);
     const bool success = writeAllBytes(writer->dstFd, buffer, size);
-    if (success < 0) {
+    if (!success) {
         ALOGE("Cannot write to file descriptor. Error:%d", errno);
         return 0;
     }

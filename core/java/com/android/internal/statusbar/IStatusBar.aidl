@@ -39,6 +39,7 @@ oneway interface IStatusBar
     void notificationLightOff();
     void notificationLightPulse(int argb, int millisOn, int millisOff);
 
+    void setPieTriggerMask(int newMask, boolean lock);
     void showRecentApps(boolean triggeredFromAltTab);
     void hideRecentApps(boolean triggeredFromAltTab, boolean triggeredFromHomeKey);
     void toggleRecentApps();
@@ -47,9 +48,8 @@ oneway interface IStatusBar
     void showScreenPinningRequest();
     void setAutoRotate(boolean enabled);
     void showCustomIntentAfterKeyguard(inout Intent intent);
+    void toggleScreenshot();
     void toggleLastApp();
     void toggleKillApp();
-    void toggleScreenshot();
-    void setPieTriggerMask(int newMask, boolean lock);
 }
 

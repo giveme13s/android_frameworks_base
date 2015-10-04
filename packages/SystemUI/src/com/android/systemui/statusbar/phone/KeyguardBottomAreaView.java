@@ -20,6 +20,7 @@ import android.app.ActivityManagerNative;
 import android.app.admin.DevicePolicyManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -30,11 +31,12 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
+import android.graphics.PorterDuff.Mode;
+import android.hardware.ITorchService;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.os.RemoteException;
-import android.os.SystemClock;
+import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.MediaStore;
 import android.provider.Settings;
@@ -60,7 +62,6 @@ import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.KeyguardAffordanceView;
 import com.android.systemui.statusbar.KeyguardIndicationController;
 import com.android.systemui.statusbar.policy.AccessibilityController;
-import com.android.systemui.statusbar.policy.FlashlightController;
 import com.android.systemui.statusbar.policy.PreviewInflater;
 
 import java.util.List;
@@ -101,7 +102,6 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
     private ActivityStarter mActivityStarter;
     private UnlockMethodCache mUnlockMethodCache;
     private LockPatternUtils mLockPatternUtils;
-    private FlashlightController mFlashlightController;
     private PreviewInflater mPreviewInflater;
     private KeyguardIndicationController mIndicationController;
     private AccessibilityController mAccessibilityController;
@@ -112,13 +112,8 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
     private final Interpolator mLinearOutSlowInInterpolator;
     private int mLastUnlockIconRes = 0;
 
-    //private VisualizerView mVisualizer;
-    //private boolean mScreenOn;
-    //private boolean mLinked;
-    
     private boolean mLongClickToForceLock;
-    private boolean mLongClickToSleep;
-    private PowerManager mPm;
+    private boolean mLongClickTorch;
 
     public KeyguardBottomAreaView(Context context) {
         this(context, null);
@@ -203,6 +198,7 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
         mPhoneImageView.setOnClickListener(this);
         initAccessibility();
         updateCustomShortcuts();
+        updateIndicationTextColor();
     }
 
     private void updateCustomShortcuts() {
@@ -259,10 +255,6 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
 
     public void setActivityStarter(ActivityStarter activityStarter) {
         mActivityStarter = activityStarter;
-    }
-
-    public void setFlashlightController(FlashlightController flashlightController) {
-        mFlashlightController = flashlightController;
     }
 
     public void setAccessibilityController(AccessibilityController accessibilityController) {
@@ -369,10 +361,10 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
                 && !mAccessibilityController.isAccessibilityEnabled();
         mLongClickToForceLock = mUnlockMethodCache.isTrustManaged()
                 && !clickToForceLock;
-        mLongClickToSleep = Settings.Secure.getIntForUser(getContext().getContentResolver(),
-                Settings.Secure.LONG_PRESS_LOCK_ICON_TO_SLEEP, 0, UserHandle.USER_CURRENT) == 1;
+        mLongClickTorch = Settings.Secure.getIntForUser(getContext().getContentResolver(),
+                Settings.Secure.LONG_PRESS_LOCK_ICON_TORCH, 0, UserHandle.USER_CURRENT) == 1;
         mLockIcon.setClickable(clickToForceLock || clickToUnlock);
-        mLockIcon.setLongClickable(mLongClickToForceLock || mLongClickToSleep);
+        mLockIcon.setLongClickable(mLongClickToForceLock || mLongClickTorch);
         mLockIcon.setFocusable(mAccessibilityController.isAccessibilityEnabled());
     }
 
@@ -394,9 +386,13 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
 
     @Override
     public boolean onLongClick(View v) {
-        if (mLongClickToSleep && !mLongClickToForceLock) {
-            mPm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-            mPm.goToSleep(SystemClock.uptimeMillis());
+        if (mLongClickTorch && !mLongClickToForceLock) {
+            try {
+                ITorchService torchService = ITorchService.Stub.asInterface(
+                        ServiceManager.getService(Context.TORCH_SERVICE));
+                torchService.toggleTorch();
+            } catch (RemoteException e) {
+            }
             return true;
         } else {
             handleTrustCircleClick();
@@ -411,7 +407,6 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
     }
 
     public void launchCamera() {
-        mFlashlightController.killFlashlight();
         Intent intent;
         if (!mShortcutHelper.isTargetCustom(LockscreenShortcutsHelper.Shortcuts.RIGHT_SHORTCUT)) {
             intent = getCameraIntent();
@@ -421,6 +416,8 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
         boolean wouldLaunchResolverActivity = PreviewInflater.wouldLaunchResolverActivity(
                 mContext, intent, mLockPatternUtils.getCurrentUser());
         if (intent == SECURE_CAMERA_INTENT && !wouldLaunchResolverActivity) {
+            intent.setFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             mContext.startActivityAsUser(intent, UserHandle.CURRENT);
         } else {
 
@@ -622,17 +619,6 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
                 .setDuration(DOZE_ANIMATION_ELEMENT_DURATION);
     }
 
-    public void updateTextColor(int color) {
-        mIndicationText.setTextColor(color);
-
-    }
-
-    public void updateIconColor(int color) {
-        mCameraImageView.updateColorSettings(color);
-        mPhoneImageView.updateColorSettings(color);
-        mLockIcon.updateColorSettings(color);
-    }
-
     private final BroadcastReceiver mDevicePolicyReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             post(new Runnable() {
@@ -674,6 +660,22 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
 
     public boolean isTargetCustom(LockscreenShortcutsHelper.Shortcuts shortcut) {
         return mShortcutHelper.isTargetCustom(shortcut);
+    }
+
+    public void updateIconColor(int color) {
+         mCameraImageView.updateColorSettings(color);
+         mPhoneImageView.updateColorSettings(color);
+         mLockIcon.updateColorSettings(color);
+    }
+
+    public void updateIndicationTextColor() {
+        ContentResolver resolver = getContext().getContentResolver();
+        int color = Settings.System.getInt(resolver,
+                Settings.System.LOCKSCREEN_INDICATION_TEXT_COLOR, 0xFFFFFFFF);
+
+        if (mIndicationText != null) {
+            mIndicationText.setTextColor(color);
+        }
     }
 
     @Override

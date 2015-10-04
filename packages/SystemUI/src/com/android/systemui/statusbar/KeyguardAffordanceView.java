@@ -132,14 +132,10 @@ public class KeyguardAffordanceView extends ImageView implements Palette.Palette
         super(context, attrs, defStyleAttr, defStyleRes);
         mCirclePaint = new Paint();
         mCirclePaint.setAntiAlias(true);
-        mCircleColor = 0xffffffff;
-        mCirclePaint.setColor(mCircleColor);
 
         int iconColor = Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.LOCK_SCREEN_ICON_COLOR, 0xffffffff);
+                Settings.System.LOCKSCREEN_BOTTOM_ICONS_COLOR, 0xffffffff);
 
-        //mNormalColor = 0xffffffff;
-        //mInverseColor = 0xff000000;
         mMinBackgroundRadius = mContext.getResources().getDimensionPixelSize(
                 R.dimen.keyguard_affordance_min_background_radius);
         mHintChevronPadding = mContext.getResources().getDimensionPixelSize(
@@ -153,6 +149,7 @@ public class KeyguardAffordanceView extends ImageView implements Palette.Palette
         mArrowDrawable = context.getDrawable(R.drawable.ic_chevron_left);
         mArrowDrawable.setBounds(0, 0, mArrowDrawable.getIntrinsicWidth(),
                 mArrowDrawable.getIntrinsicHeight());
+
         updateColorSettings(iconColor);
     }
 

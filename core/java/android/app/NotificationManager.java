@@ -17,6 +17,7 @@
 package android.app;
 
 import android.annotation.SdkConstant;
+import android.app.Notification;
 import android.app.Notification.Builder;
 import android.content.ComponentName;
 import android.content.Context;
@@ -136,26 +137,7 @@ public class NotificationManager
      */
     public void notify(String tag, int id, Notification notification)
     {
-        int[] idOut = new int[1];
-        INotificationManager service = getService();
-        String pkg = mContext.getPackageName();
-        if (notification.sound != null) {
-            notification.sound = notification.sound.getCanonicalUri();
-            if (StrictMode.vmFileUriExposureEnabled()) {
-                notification.sound.checkFileUriExposed("Notification.sound");
-            }
-        }
-        if (localLOGV) Log.v(TAG, pkg + ": notify(" + id + ", " + notification + ")");
-        Notification stripped = notification.clone();
-        Builder.stripForDelivery(stripped);
-        try {
-            service.enqueueNotificationWithTag(pkg, mContext.getOpPackageName(), tag, id,
-                    stripped, idOut, UserHandle.myUserId());
-            if (id != idOut[0]) {
-                Log.w(TAG, "notify: id corrupted: sent " + id + ", got back " + idOut[0]);
-            }
-        } catch (RemoteException e) {
-        }
+        notifyAsUser(tag, id, notification, UserHandle.myUserHandle());
     }
 
     /**
@@ -202,13 +184,7 @@ public class NotificationManager
      */
     public void cancel(String tag, int id)
     {
-        INotificationManager service = getService();
-        String pkg = mContext.getPackageName();
-        if (localLOGV) Log.v(TAG, pkg + ": cancel(" + id + ")");
-        try {
-            service.cancelNotificationWithTag(pkg, tag, id, UserHandle.myUserId());
-        } catch (RemoteException e) {
-        }
+        cancelAsUser(tag, id, UserHandle.myUserHandle());
     }
 
     /**
@@ -261,6 +237,18 @@ public class NotificationManager
             return service.matchesCallFilter(extras);
         } catch (RemoteException e) {
             return false;
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public int getShowNotificationForPackageOnKeyguard(String pkg, int uid) {
+        INotificationManager service = getService();
+        try {
+            return getService().getShowNotificationForPackageOnKeyguard(pkg, uid);
+        } catch (RemoteException e) {
+            return Notification.SHOW_ALL_NOTI_ON_KEYGUARD;
         }
     }
 

@@ -22,6 +22,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Rect;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
@@ -177,6 +178,14 @@ public class RecentsConfiguration {
         return sInstance;
     }
 
+    /** Returns the current recents configuration or creates and populates it if required */
+    public static RecentsConfiguration getInstance(Context context, SystemServicesProxy ssp) {
+        if (sInstance == null) {
+            sInstance = reinitialize(context, ssp);
+        }
+        return sInstance;
+    }
+
     /** Updates the state, given the specified context */
     void update(Context context) {
         SharedPreferences settings = context.getSharedPreferences(context.getPackageName(), 0);
@@ -208,7 +217,9 @@ public class RecentsConfiguration {
                 res.getInteger(R.integer.recents_filter_animate_new_views_duration);
 
         // Loading
-        maxNumTasksToLoad = ActivityManager.getMaxRecentTasksStatic();
+        maxNumTasksToLoad = Settings.System.getIntForUser(context.getContentResolver(),
+                Settings.System.RECENTS_MAX_APPS, ActivityManager.getMaxRecentTasksStatic(),
+                UserHandle.USER_CURRENT);
 
         // Search Bar
         searchBarAppWidgetId = settings.getInt(Constants.Values.App.Key_SearchAppWidgetId, -1);

@@ -53,7 +53,6 @@ import com.android.systemui.qs.tiles.HotspotTile;
 import com.android.systemui.qs.tiles.IntentTile;
 import com.android.systemui.qs.tiles.LocationTile;
 import com.android.systemui.qs.tiles.LockscreenToggleTile;
-import com.android.systemui.qs.tiles.LteTile; 
 import com.android.systemui.qs.tiles.NfcTile;
 import com.android.systemui.qs.tiles.NotificationsTile;
 import com.android.systemui.qs.tiles.MusicTile;
@@ -62,7 +61,6 @@ import com.android.systemui.qs.tiles.RoamingTile;
 import com.android.systemui.qs.tiles.RebootTile;
 import com.android.systemui.qs.tiles.RotationLockTile;
 import com.android.systemui.qs.tiles.UsbTetherTile;
-import com.android.systemui.qs.tiles.ScreenOffTile;
 import com.android.systemui.qs.tiles.ScreenshotTile;
 import com.android.systemui.qs.tiles.VolumeTile;
 import com.android.systemui.qs.tiles.ScreenrecordTile;
@@ -71,8 +69,6 @@ import com.android.systemui.qs.tiles.ScreenTimeoutTile;
 import com.android.systemui.qs.tiles.HeadsupTile;
 import com.android.systemui.qs.tiles.AppCircleBarTile;
 import com.android.systemui.qs.tiles.NavBarTile;
-import com.android.systemui.qs.tiles.PowerMenuTile;
-import com.android.systemui.qs.tiles.SlimFloatsTile;
 import com.android.systemui.qs.tiles.WifiTile;
 import com.android.systemui.settings.CurrentUserTracker;
 import com.android.systemui.statusbar.policy.BluetoothController;
@@ -340,8 +336,6 @@ public class QSTileHost implements QSTile.Host {
                 return new BrightnessTile(this);
             case QSConstants.TILE_BATTERY_SAVER:
                 return new BatterySaverTile(this);
-            case QSConstants.TILE_SCREEN_OFF:
-                return new ScreenOffTile(this);
             case QSConstants.TILE_HEADS_UP:
                 return new HeadsupTile(this);
             case QSConstants.TILE_APPCIRCLEBAR:
@@ -360,12 +354,6 @@ public class QSTileHost implements QSTile.Host {
                 return new PieTile(this);
             case QSConstants.TILE_EXPANDED_DESKTOP:
                 return new ExpandedDesktopTile(this);
-            case QSConstants.TILE_LTE:
-                return new LteTile(this);
-            case QSConstants.TILE_SLIM_FLOATS:
-                return new SlimFloatsTile(this);
-            case QSConstants.TILE_POWER_MENU:
-                return new PowerMenuTile(this);
             default:
                 throw new IllegalArgumentException("Bad tile spec: " + tileSpec);
         }

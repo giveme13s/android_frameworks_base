@@ -33,8 +33,6 @@ public class TaskStack {
     /** Amount of time in milliseconds to animate the dim surface from one value to another,
      * when no window animation is driving it. */
     private static final int DEFAULT_DIM_DURATION = 200;
-    private static final int DEFAULT_BLUR_DURATION = 50;
-    private static final float MAX_BLUR_AMOUNT = 1.0f;
 
     /** Unique identifier */
     final int mStackId;
@@ -73,10 +71,6 @@ public class TaskStack {
     /** Set to false at the start of performLayoutAndPlaceSurfaces. If it is still false by the end
      * then stop any dimming. */
     boolean mDimmingTag;
-
-    boolean mBlurringTag;
-    BlurLayer mBlurLayer;
-    WindowStateAnimator mBlurWinAnimator;
 
     /** Application tokens that are exiting, but still on screen for animations. */
     final AppTokenList mExitingAppTokens = new AppTokenList();
@@ -134,7 +128,6 @@ public class TaskStack {
 
         mDimLayer.setBounds(bounds, false);
         mAnimationBackgroundSurface.setBounds(bounds, false);
-        mBlurLayer.setBounds(bounds, false);
         mBounds.set(bounds);
 
         return true;
@@ -198,9 +191,7 @@ public class TaskStack {
         mTasks.add(stackNdx, task);
 
         task.mStack = this;
-        if (toTop) {
-            mDisplayContent.moveStack(this, true);
-        }
+        mDisplayContent.moveStack(this, true);
         EventLog.writeEvent(EventLogTags.WM_TASK_MOVED, task.taskId, toTop ? 1 : 0, stackNdx);
     }
 
@@ -241,7 +232,6 @@ public class TaskStack {
         mDisplayContent = displayContent;
         mDimLayer = new DimLayer(mService, this, displayContent);
         mAnimationBackgroundSurface = new DimLayer(mService, this, displayContent);
-        mBlurLayer = new BlurLayer(mService, this, displayContent);
         updateDisplayInfo();
     }
 
@@ -263,8 +253,6 @@ public class TaskStack {
             mService.requestTraversalLocked();
         }
 
-        mBlurLayer.destroySurface();
-        mBlurLayer = null;
         mAnimationBackgroundSurface.destroySurface();
         mAnimationBackgroundSurface = null;
         mDimLayer.destroySurface();
@@ -275,10 +263,6 @@ public class TaskStack {
     void resetAnimationBackgroundAnimator() {
         mAnimationBackgroundAnimator = null;
         mAnimationBackgroundSurface.hide();
-    }
-
-    private long getBlurBehindFadeDuration(long duration) {
-        return getDimBehindFadeDuration(duration);
     }
 
     private long getDimBehindFadeDuration(long duration) {
@@ -378,82 +362,6 @@ public class TaskStack {
         }
     }
 
-    boolean animateBlurLayers() {
-        boolean result = false;
-        final int blurLayer;
-        final float blurAmount;
-        if (mBlurWinAnimator == null) {
-            blurLayer = mBlurLayer.getLayer();
-            blurAmount = 0;
-        } else {
-            blurLayer = mBlurWinAnimator.mAnimLayer - WindowManagerService.LAYER_OFFSET_BLUR;
-            blurAmount = MAX_BLUR_AMOUNT;
-        }
-        final float targetBlur = mBlurLayer.getTargetBlur();
-        if (targetBlur != blurAmount) {
-            if (mBlurWinAnimator == null) {
-                mBlurLayer.hide(DEFAULT_BLUR_DURATION);
-            } else {
-                long duration = (mBlurWinAnimator.mAnimating && mBlurWinAnimator.mAnimation != null)
-                        ? mBlurWinAnimator.mAnimation.computeDurationHint()
-                        : DEFAULT_BLUR_DURATION;
-                if (targetBlur > blurAmount) {
-                    duration = getBlurBehindFadeDuration(duration);
-                }
-                if (duration > DEFAULT_BLUR_DURATION)
-                    duration = DEFAULT_BLUR_DURATION;
-                mBlurLayer.show(blurLayer, blurAmount, duration);
-            }
-        } else if (mBlurLayer.getLayer() != blurLayer) {
-            mBlurLayer.setLayer(blurLayer);
-        }
-        if (mBlurLayer.isAnimating()) {
-            if (!mService.okToDisplay()) {
-                // Jump to the end of the animation.
-                mBlurLayer.show();
-            } else {
-                result = mBlurLayer.stepAnimation();
-            }
-        }
-        return result;
-    }
-
-    void resetBlurringTag() {
-        mBlurringTag = false;
-    }
-
-    void setBlurringTag() {
-        mBlurringTag = true;
-    }
-
-    boolean testBlurringTag() {
-        return mBlurringTag;
-    }
-
-    boolean isBlurring() {
-        return mBlurLayer.isBlurring();
-    }
-
-    boolean isBlurring(WindowStateAnimator winAnimator) {
-        return mBlurWinAnimator == winAnimator && mBlurLayer.isBlurring();
-    }
-
-    void stopBlurringIfNeeded() {
-        if (!mBlurringTag && isBlurring()) {
-            mBlurWinAnimator = null;
-        }
-    }
-
-    void startBlurringIfNeeded(WindowStateAnimator newWinAnimator) {
-        final WindowStateAnimator existingBlurWinAnimator = mBlurWinAnimator;
-        // Don't turn on for an unshown surface, or for any layer but the highest blur layer.
-        if (newWinAnimator.mSurfaceShown && (existingBlurWinAnimator == null
-                || !existingBlurWinAnimator.mSurfaceShown
-                || existingBlurWinAnimator.mAnimLayer < newWinAnimator.mAnimLayer)) {
-            mBlurWinAnimator = newWinAnimator;
-        }
-    }
-
     void switchUser(int userId) {
         int top = mTasks.size();
         for (int taskNdx = 0; taskNdx < top; ++taskNdx) {
@@ -467,7 +375,6 @@ public class TaskStack {
     }
 
     void close() {
-        mBlurLayer.mBlurSurface.destroy();
         mDimLayer.mDimSurface.destroy();
         mAnimationBackgroundSurface.mDimSurface.destroy();
     }
@@ -486,11 +393,6 @@ public class TaskStack {
             pw.print(prefix); pw.println("mDimLayer:");
             mDimLayer.printTo(prefix, pw);
             pw.print(prefix); pw.print("mDimWinAnimator="); pw.println(mDimWinAnimator);
-        }
-        if (mBlurLayer.isBlurring()) {
-            pw.print(prefix); pw.println("mBlurLayer:");
-            mBlurLayer.printTo(prefix, pw);
-            pw.print(prefix); pw.print("mBlurWinAnimator="); pw.println(mBlurWinAnimator);
         }
         if (!mExitingAppTokens.isEmpty()) {
             pw.println();

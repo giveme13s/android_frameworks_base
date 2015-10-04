@@ -49,6 +49,7 @@ import android.os.StrictMode;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.provider.Settings;
 import android.service.dreams.DreamService;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
@@ -56,6 +57,7 @@ import android.util.Log;
 import android.util.Slog;
 import android.view.WindowManager;
 import android.webkit.WebViewFactory;
+import android.database.ContentObserver;
 
 import com.android.internal.R;
 import com.android.internal.os.BinderInternal;
@@ -170,6 +172,19 @@ public final class SystemServer {
 
     private boolean mOnlyCore;
     private boolean mFirstBoot;
+
+    private class AdbPortObserver extends ContentObserver {
+        public AdbPortObserver() {
+            super(null);
+        }
+        @Override
+        public void onChange(boolean selfChange) {
+            int adbPort = Settings.Secure.getInt(mContentResolver,
+                Settings.Secure.ADB_PORT, 0);
+            // setting this will control whether ADB runs on TCP/IP or USB
+            SystemProperties.set("service.adb.tcp.port", Integer.toString(adbPort));
+        }
+    }
 
     /**
      * Called to initialize native system services.
@@ -301,7 +316,7 @@ public final class SystemServer {
                 reason = null;
             }
 
-            ShutdownThread.rebootOrShutdown(reboot, reason);
+            ShutdownThread.rebootOrShutdown(null, reboot, reason);
         }
     }
 
@@ -511,7 +526,7 @@ public final class SystemServer {
             // TODO: Use a more reliable check to see if this product should
             // support Bluetooth - see bug 988521
             if (isEmulator) {
-                Slog.i(TAG, "No Bluetooh Service (emulator)");
+                Slog.i(TAG, "No Bluetooth Service (emulator)");
             } else if (mFactoryTestMode == FactoryTest.FACTORY_TEST_LOW_LEVEL) {
                 Slog.i(TAG, "No Bluetooth Service (factory test)");
             } else if (!context.getPackageManager().hasSystemFeature
@@ -638,6 +653,15 @@ public final class SystemServer {
                             new ClipboardService(context));
                 } catch (Throwable e) {
                     reportWtf("starting Clipboard Service", e);
+                }
+            }
+
+            if (!disableNonCoreServices) {
+                try {
+                    Slog.i(TAG, "TorchService");
+                    ServiceManager.addService(Context.TORCH_SERVICE, new TorchService(context));
+                } catch (Throwable e) {
+                    reportWtf("starting Torch Service", e);
                 }
             }
 
@@ -1049,6 +1073,14 @@ public final class SystemServer {
         if (!disableNonCoreServices) {
             mSystemServiceManager.startService(MediaProjectionManagerService.class);
         }
+
+        Settings.Secure.putInt(mContentResolver, Settings.Secure.ADB_PORT,
+                Integer.parseInt(SystemProperties.get("service.adb.tcp.port", "-1")));
+
+        // register observer to listen for settings changes
+        mContentResolver.registerContentObserver(
+            Settings.Secure.getUriFor(Settings.Secure.ADB_PORT),
+            false, new AdbPortObserver());
 
         // Before things start rolling, be sure we have decided whether
         // we are in safe mode.

@@ -104,6 +104,7 @@ import com.android.internal.statusbar.StatusBarIconList;
 import com.android.internal.util.NotificationColorUtil;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.internal.util.slim.DeviceUtils;
+import com.android.internal.util.du.OmniSwitchConstants;
 import com.android.systemui.R;
 import com.android.systemui.RecentsComponent;
 import com.android.systemui.SearchPanelView;
@@ -186,6 +187,7 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     // Search panel
     protected SearchPanelView mSearchPanelView;
+    private boolean mSearchPanelViewEnabled;
 
     protected int mCurrentUserId = 0;
     final protected SparseArray<UserInfo> mCurrentProfiles = new SparseArray<UserInfo>();
@@ -357,6 +359,9 @@ public abstract class BaseStatusBar extends SystemUI implements
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HEADS_UP_BLACKLIST_VALUES),
                     false, this);
+            resolver.registerContentObserver(
+                    Settings.Secure.getUriFor(Settings.Secure.SEARCH_PANEL_ENABLED),
+                    false, this);
             update();
         }
 
@@ -367,6 +372,8 @@ public abstract class BaseStatusBar extends SystemUI implements
 
         private void update() {
             ContentResolver resolver = mContext.getContentResolver();
+            mSearchPanelViewEnabled = Settings.Secure.getInt(
+                    resolver, Settings.Secure.SEARCH_PANEL_ENABLED, 1) == 1;
             final String dndString = Settings.System.getString(mContext.getContentResolver(),
                     Settings.System.HEADS_UP_CUSTOM_VALUES);
             final String blackString = Settings.System.getString(mContext.getContentResolver(),
@@ -1174,7 +1181,7 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     @Override
     public void showSearchPanel() {
-        if (mSearchPanelView != null && mSearchPanelView.isAssistantAvailable()) {
+        if (mSearchPanelView != null && mSearchPanelViewEnabled) {
             mSearchPanelView.show(true, true);
         }
     }
@@ -1287,56 +1294,86 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     /** Proxy for RecentsComponent */
 
+    private boolean isOmniSwitchEnabled() {
+        int settingsValue = Settings.System.getIntForUser(
+                mContext.getContentResolver(), Settings.System.RECENTS_USE_OMNISWITCH, 0
+                , UserHandle.USER_CURRENT);
+        return (settingsValue == 1);
+    }
+
     protected void showRecents(boolean triggeredFromAltTab) {
-        if (mRecents != null) {
-            sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
-            mRecents.showRecents(triggeredFromAltTab, getStatusBarView());
+        if (isOmniSwitchEnabled()) {
+            Intent showIntent = new Intent(OmniSwitchConstants.ACTION_SHOW_OVERLAY);
+            mContext.sendBroadcastAsUser(showIntent, UserHandle.CURRENT);
+        } else {
+            if (mRecents != null) {
+                sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
+                mRecents.showRecents(triggeredFromAltTab, getStatusBarView());
+            }
         }
     }
 
     protected void hideRecents(boolean triggeredFromAltTab, boolean triggeredFromHomeKey) {
-        if (mRecents != null) {
-            mRecents.hideRecents(triggeredFromAltTab, triggeredFromHomeKey);
-        } else if (mSlimRecents != null) {
-            mSlimRecents.hideRecents(triggeredFromHomeKey);
+        if (isOmniSwitchEnabled()) {
+            Intent showIntent = new Intent(OmniSwitchConstants.ACTION_HIDE_OVERLAY);
+            mContext.sendBroadcastAsUser(showIntent, UserHandle.CURRENT);
+        } else {
+            if (mRecents != null) {
+                mRecents.hideRecents(triggeredFromAltTab, triggeredFromHomeKey);
+            } else if (mSlimRecents != null) {
+                mSlimRecents.hideRecents(triggeredFromHomeKey);
+            }
         }
     }
 
     protected void toggleRecents() {
-        if (mRecents != null) {
-            sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
-            mRecents.toggleRecents(mDisplay, mLayoutDirection, getStatusBarView());
+        if (isOmniSwitchEnabled()) {
+            Intent showIntent = new Intent(OmniSwitchConstants.ACTION_TOGGLE_OVERLAY);
+            mContext.sendBroadcastAsUser(showIntent, UserHandle.CURRENT);
+        } else {
+            if (mRecents != null) {
+                sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
+                mRecents.toggleRecents(mDisplay, mLayoutDirection, getStatusBarView());
         } else if (mSlimRecents != null) {
-            sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
-            mSlimRecents.toggleRecents(mDisplay, mLayoutDirection, getStatusBarView());
+                sendCloseSystemWindows(mContext, SYSTEM_DIALOG_REASON_RECENT_APPS);
+                mSlimRecents.toggleRecents(mDisplay, mLayoutDirection, getStatusBarView());
+            }
         }
     }
 
     protected void preloadRecents() {
+        if (!isOmniSwitchEnabled()) {
         if (mRecents != null) {
             mRecents.preloadRecents();
         } else if (mSlimRecents != null) {
             mSlimRecents.preloadRecentTasksList();
+            }
         }
     }
 
     protected void cancelPreloadingRecents() {
+        if (!isOmniSwitchEnabled()) {
         if (mRecents != null) {
             mRecents.cancelPreloadingRecents();
         } else if (mSlimRecents != null) {
             mSlimRecents.cancelPreloadingRecentTasksList();
+            }
         }
     }
 
     protected void showRecentsNextAffiliatedTask() {
-        if (mRecents != null) {
-             mRecents.showNextAffiliatedTask();
+        if (!isOmniSwitchEnabled()) {
+            if (mRecents != null) {
+                mRecents.showNextAffiliatedTask();
+            }
         }
     }
 
     protected void showRecentsPreviousAffiliatedTask() {
-        if (mRecents != null) {
-            mRecents.showPrevAffiliatedTask();
+        if (!isOmniSwitchEnabled()) {
+            if (mRecents != null) {
+                mRecents.showPrevAffiliatedTask();
+            }
         }
     }
 
@@ -2010,18 +2047,8 @@ public abstract class BaseStatusBar extends SystemUI implements
     }
 
     private boolean shouldShowOnKeyguard(StatusBarNotification sbn) {
-        if (!mShowLockscreenNotifications || mNotificationData.isAmbient(sbn.getKey())) {
-            return false;
-        }
-        final String pkgName = sbn.getPackageName();
-        // always hide privacy guard notification on lock screen
-        if (pkgName.equals("android") &&
-                sbn.getId() == com.android.internal.R.string.privacy_guard_notification) {
-            return false;
-        }
-        // retrieve per app visibility setting
         final int showOnKeyguard = mNoMan.getShowNotificationForPackageOnKeyguard(
-                pkgName, sbn.getUid());
+                sbn.getPackageName(), sbn.getUid());
         boolean isKeyguardAllowedForApp =
                 (showOnKeyguard & Notification.SHOW_ALL_NOTI_ON_KEYGUARD) != 0;
         if (isKeyguardAllowedForApp && sbn.isOngoing()) {

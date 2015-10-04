@@ -777,7 +777,7 @@ public class MediaPlayer implements SubtitleController.Listener
      * <li> {@link #VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING}
      * </ul>
      *
-     * @param mode target video scaling mode. Most be one of the supported
+     * @param mode target video scaling mode. Must be one of the supported
      * video scaling modes; otherwise, IllegalArgumentException will be thrown.
      *
      * @see MediaPlayer#VIDEO_SCALING_MODE_SCALE_TO_FIT
@@ -946,6 +946,26 @@ public class MediaPlayer implements SubtitleController.Listener
     }
 
     /**
+     * Gets the current ringtone, supports MSIM
+     *
+     * @param context the Context to use when resolving the Uri
+     * @param ringtoneType the type of the tone
+     * @param uri the Content URI of the data you want
+     * {@hide}
+     */
+    public Uri getCurrentRingtoneUriByType(Context context, int ringtoneType, Uri uri) {
+        Uri soundUri = null;
+        if (ringtoneType == RingtoneManager.TYPE_RINGTONE) {
+            soundUri = RingtoneManager.getActualRingtoneUriBySubId(context,
+                    RingtoneManager.getDefaultRingtoneSubIdByUri(uri));
+        } else {
+            soundUri = RingtoneManager.getActualDefaultRingtoneUri(context,
+                    ringtoneType);
+        }
+        return soundUri;
+    }
+
+    /**
      * Sets the data source as a content Uri.
      *
      * @param context the Context to use when resolving the Uri
@@ -978,8 +998,7 @@ public class MediaPlayer implements SubtitleController.Listener
         } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)
                 && Settings.AUTHORITY.equals(uri.getAuthority())) {
             // Redirect ringtones to go directly to underlying provider
-            uri = RingtoneManager.getActualDefaultRingtoneUri(context,
-                    RingtoneManager.getDefaultType(uri));
+            uri = getCurrentRingtoneUriByType(context, RingtoneManager.getDefaultType(uri), uri);
             if (uri == null) {
                 throw new FileNotFoundException("Failed to resolve default ringtone");
             }
@@ -2186,9 +2205,9 @@ public class MediaPlayer implements SubtitleController.Listener
             throw new IllegalArgumentException("Illegal mimeType for timed text source: " + mime);
         }
 
-        FileDescriptor fd2;
+        final FileDescriptor dupedFd;
         try {
-            fd2 = Libcore.os.dup(fd);
+            dupedFd = Libcore.os.dup(fd);
         } catch (ErrnoException ex) {
             Log.e(TAG, ex.getMessage(), ex);
             throw new RuntimeException(ex);
@@ -2221,7 +2240,6 @@ public class MediaPlayer implements SubtitleController.Listener
         final SubtitleTrack track = mSubtitleController.addTrack(fFormat);
         mOutOfBandSubtitleTracks.add(track);
 
-        final FileDescriptor fd3 = fd2;
         final long offset2 = offset;
         final long length2 = length;
         final HandlerThread thread = new HandlerThread(
@@ -2231,14 +2249,13 @@ public class MediaPlayer implements SubtitleController.Listener
         Handler handler = new Handler(thread.getLooper());
         handler.post(new Runnable() {
             private int addTrack() {
-                InputStream is = null;
                 final ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 try {
-                    Libcore.os.lseek(fd3, offset2, OsConstants.SEEK_SET);
+                    Libcore.os.lseek(dupedFd, offset2, OsConstants.SEEK_SET);
                     byte[] buffer = new byte[4096];
                     for (long total = 0; total < length2;) {
                         int bytesToRead = (int) Math.min(buffer.length, length2 - total);
-                        int bytes = IoBridge.read(fd3, buffer, 0, bytesToRead);
+                        int bytes = IoBridge.read(dupedFd, buffer, 0, bytesToRead);
                         if (bytes < 0) {
                             break;
                         } else {
@@ -2252,12 +2269,10 @@ public class MediaPlayer implements SubtitleController.Listener
                     Log.e(TAG, e.getMessage(), e);
                     return MEDIA_INFO_TIMED_TEXT_ERROR;
                 } finally {
-                    if (is != null) {
-                        try {
-                            is.close();
-                        } catch (IOException e) {
-                            Log.e(TAG, e.getMessage(), e);
-                        }
+                    try {
+                        Libcore.os.close(dupedFd);
+                    } catch (ErrnoException e) {
+                        Log.e(TAG, e.getMessage(), e);
                     }
                 }
             }

@@ -88,6 +88,21 @@ public class RenderScript {
     */
     public static final int CREATE_FLAG_LOW_POWER = 0x0004;
 
+    /**
+     * @hide
+     * Context creation flag which instructs the implementation to wait for
+     * a debugger to be attached before continuing execution.
+    */
+    public static final int CREATE_FLAG_WAIT_FOR_ATTACH = 0x0008;
+
+    /**
+     * @hide
+     * Context creation flag which specifies that optimization level 0 is
+     * passed to the device compiler upon execution of the RenderScript kernel.
+     * The default optimization level is 3.
+    */
+    public static final int CREATE_FLAG_OPT_LEVEL_0 = 0x0010;
+
     /*
      * Detect the bitness of the VM to allow FieldPacker to do the right thing.
      */
@@ -845,6 +860,8 @@ public class RenderScript {
 
     long     mDev;
     long     mContext;
+    private boolean mDestroyed = false;
+
     @SuppressWarnings({"FieldCanBeLocal"})
     MessageThread mMessageThread;
 
@@ -1204,7 +1221,8 @@ public class RenderScript {
             return null;
         }
 
-        if ((flags & ~(CREATE_FLAG_LOW_LATENCY | CREATE_FLAG_LOW_POWER)) != 0) {
+        if ((flags & ~(CREATE_FLAG_LOW_LATENCY | CREATE_FLAG_LOW_POWER |
+                       CREATE_FLAG_WAIT_FOR_ATTACH | CREATE_FLAG_OPT_LEVEL_0)) != 0) {
             throw new RSIllegalArgumentException("Invalid flags passed.");
         }
 
@@ -1387,6 +1405,38 @@ public class RenderScript {
         nContextFinish();
     }
 
+    private void helpDestroy() {
+        boolean shouldDestroy = false;
+        synchronized(this) {
+            if (!mDestroyed) {
+                shouldDestroy = true;
+                mDestroyed = true;
+            }
+        }
+
+        if (shouldDestroy) {
+            nContextFinish();
+
+            nContextDeinitToClient(mContext);
+            mMessageThread.mRun = false;
+            try {
+                mMessageThread.join();
+            } catch(InterruptedException e) {
+            }
+
+            nContextDestroy();
+
+            nDeviceDestroy(mDev);
+            mDev = 0;
+        }
+    }
+
+    protected void finalize() throws Throwable {
+        helpDestroy();
+        super.finalize();
+    }
+
+
     /**
      * Destroys this RenderScript context.  Once this function is called,
      * using this context or any objects belonging to this context is
@@ -1403,19 +1453,7 @@ public class RenderScript {
             return;
         }
         validate();
-        nContextFinish();
-
-        nContextDeinitToClient(mContext);
-        mMessageThread.mRun = false;
-        try {
-            mMessageThread.join();
-        } catch(InterruptedException e) {
-        }
-
-        nContextDestroy();
-
-        nDeviceDestroy(mDev);
-        mDev = 0;
+        helpDestroy();
     }
 
     boolean isAlive() {

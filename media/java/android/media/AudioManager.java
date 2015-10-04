@@ -830,16 +830,14 @@ public class AudioManager {
                  * Play a sound. This is done on key up since we don't want the
                  * sound to play when a user holds down volume down to mute.
                  */
-                if (mUseVolumeKeySounds) {
-                    if (mUseMasterVolume) {
-                        adjustMasterVolume(ADJUST_SAME, FLAG_PLAY_SOUND);
-                    } else {
-                        int flags = FLAG_PLAY_SOUND;
-                        adjustSuggestedStreamVolume(
-                                ADJUST_SAME,
-                                stream,
-                                flags);
-                    }
+                if (mUseMasterVolume) {
+                    adjustMasterVolume(ADJUST_SAME, FLAG_PLAY_SOUND);
+                } else {
+                    int flags = FLAG_PLAY_SOUND;
+                    adjustSuggestedStreamVolume(
+                            ADJUST_SAME,
+                            stream,
+                            flags);
                 }
                 mVolumeKeyUpTime = SystemClock.uptimeMillis();
                 break;
@@ -1048,10 +1046,10 @@ public class AudioManager {
             return 0;
         }
     }
-    
+
     /**
      * Sets the maximum volume index for a particular stream.
-     *
+     * 
      * @param streamType The stream type whose maximum volume index is set.
      * @param maxVol The maximum volume to set range 7 - 45.
      * @return The maximum valid volume index for the stream.
@@ -1061,23 +1059,23 @@ public class AudioManager {
         IAudioService service = getService();
         try {
             if (mUseMasterVolume) {
-                //service.setMasterMaxVolume(maxVol);
+                // service.setMasterMaxVolume(maxVol);
             } else {
-				double previousMax = new Integer(getStreamMaxVolume(streamType)).doubleValue();
-				double previousVolume = new Integer(getStreamVolume(streamType)).doubleValue();
-				double newMax = new Integer(maxVol).doubleValue();
-				double newVolume = Math.floor((newMax / previousMax) * previousVolume);
+                double previousMax = new Integer(getStreamMaxVolume(streamType)).doubleValue();
+                double previousVolume = new Integer(getStreamVolume(streamType)).doubleValue();
+                double newMax = new Integer(maxVol).doubleValue();
+                double newVolume = Math.floor((newMax / previousMax) * previousVolume);
 
-                service.setStreamMaxVolume(streamType,maxVol);
-                
+                service.setStreamMaxVolume(streamType, maxVol);
+
                 Log.i(TAG, "Volume steps for stream " + String.valueOf(streamType) + " set to " +
-					String.valueOf(maxVol));
-                
+                        String.valueOf(maxVol));
+
                 setStreamVolume(streamType, new Double(newVolume).intValue(), 0);
-                
+
                 Log.i(TAG, "Volume adjusted from " + String.valueOf(previousVolume) + " to " +
-					String.valueOf(newVolume));
-                
+                        String.valueOf(newVolume));
+
             }
         } catch (RemoteException e) {
             Log.e(TAG, "Dead object in setStreamMaxVolume", e);

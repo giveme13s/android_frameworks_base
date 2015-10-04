@@ -44,8 +44,6 @@ final class BasePermission {
 
     int[] gids;
 
-    boolean allowViaWhitelist;
-
     BasePermission(String _name, String _sourcePackage, int _type) {
         name = _name;
         sourcePackage = _sourcePackage;

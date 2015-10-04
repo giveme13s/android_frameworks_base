@@ -39,7 +39,6 @@ import com.android.internal.widget.BackgroundFallback;
 import com.android.internal.widget.DecorContentParent;
 import com.android.internal.widget.SwipeDismissLayout;
 
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.KeyguardManager;
 import android.content.Context;
@@ -62,7 +61,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.provider.Settings;
 import android.transition.Scene;
 import android.transition.Transition;
 import android.transition.TransitionInflater;
@@ -88,7 +86,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -2330,17 +2327,8 @@ public class PhoneWindow extends Window implements MenuBuilder.Callback {
         @Override
         public boolean dispatchTouchEvent(MotionEvent ev) {
             final Callback cb = getCallback();
-            if (cb != null && !isDestroyed() && mFeatureId < 0) {
-                if (cb instanceof android.app.Activity && mIsFloatingWindow) {
-                    android.app.Activity act = (android.app.Activity)cb;
-                    if (shouldCloseOnTouch(act, ev)) {
-                        act.finishFloating();
-                        return true;
-                    }
-                }
-                return cb.dispatchTouchEvent(ev);
-            }
-            return super.dispatchTouchEvent(ev);
+            return cb != null && !isDestroyed() && mFeatureId < 0 ? cb.dispatchTouchEvent(ev)
+                    : super.dispatchTouchEvent(ev);
         }
 
         @Override
@@ -3190,7 +3178,7 @@ public class PhoneWindow extends Window implements MenuBuilder.Callback {
         void updateWindowResizeState() {
             Drawable bg = getBackground();
             hackTurnOffWindowResizeAnim(bg == null || bg.getOpacity()
-                    != PixelFormat.OPAQUE || mIsFloatingWindow);
+                    != PixelFormat.OPAQUE);
         }
 
         @Override

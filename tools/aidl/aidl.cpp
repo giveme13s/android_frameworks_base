@@ -30,7 +30,10 @@
 #define MIN_USER_SET_METHOD_ID                0
 #define MAX_USER_SET_METHOD_ID                16777214
 
-using namespace std;
+using std::map;
+using std::set;
+using std::string;
+using std::vector;
 
 static void
 test_document(document_item_type* d)
@@ -177,7 +180,7 @@ check_filename(const char* filename, const char* package, buffer_type* name)
     char cwd[MAXPATHLEN];
     bool valid = false;
 
-#ifdef HAVE_WINDOWS_PATHS
+#ifdef _WIN32
     if (isalpha(filename[0]) && filename[1] == ':'
         && filename[2] == OS_PATH_SEPARATOR) {
 #else
@@ -217,7 +220,7 @@ check_filename(const char* filename, const char* package, buffer_type* name)
     if (valid) {
         p = fn.c_str() + (len - expected.length());
 
-#ifdef HAVE_WINDOWS_PATHS
+#ifdef _WIN32
         if (OS_PATH_SEPARATOR != '/') {
             // Input filename under cygwin most likely has / separators
             // whereas the expected string uses \\ separators. Adjust
@@ -673,6 +676,10 @@ generate_dep_file(const Options& options, const document_item_type* items)
     }
 
     fprintf(to, "\n");
+
+    // Output "<input_aidl_file>: " so make won't fail if the input .aidl file
+    // has been deleted, moved or renamed in incremental build.
+    fprintf(to, "%s :\n", options.inputFileName.c_str());
 
     // Output "<imported_file>: " so make won't fail if the imported file has
     // been deleted, moved or renamed in incremental build.

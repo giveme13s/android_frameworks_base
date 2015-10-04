@@ -17,6 +17,7 @@
 
 package com.android.server.power;
 
+import android.app.ActivityManager;
 import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -78,8 +79,6 @@ public final class ShutdownThread extends Thread {
     private static final int MAX_SHUTDOWN_WAIT_TIME = 20*1000;
     private static final int MAX_RADIO_WAIT_TIME = 12*1000;
 
-		private static final String SOFT_REBOOT = "soft_reboot";
-
     // length of vibration before shutting down
     private static final int SHUTDOWN_VIBRATE_MS = 500;
 
@@ -89,7 +88,10 @@ public final class ShutdownThread extends Thread {
 
     private static boolean mReboot;
     private static boolean mRebootSafeMode;
+    private static boolean mRebootHot;
     private static String mRebootReason;
+
+    public static final String HOT_REBOOT = "hot_reboot";
 
     // Provides shutdown assurance in case the system_server is killed
     public static final String SHUTDOWN_ACTION_PROPERTY = "sys.shutdown.requested";
@@ -190,9 +192,9 @@ public final class ShutdownThread extends Thread {
                     // Include options in power menu for rebooting into recovery or bootloader
                     sConfirmDialog = new AlertDialog.Builder(context)
                             .setTitle(titleResourceId)
-                            .setItems(
+                            .setSingleChoiceItems(
                                     com.android.internal.R.array.shutdown_reboot_options,
-                                    new DialogInterface.OnClickListener() {
+                                    0, new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     if (which < 0)
                                         return;
@@ -200,15 +202,39 @@ public final class ShutdownThread extends Thread {
                                     String actions[] = context.getResources().getStringArray(
                                             com.android.internal.R.array.shutdown_reboot_actions);
 
-                                    if (actions != null && which < actions.length)
+                                    if (actions != null && which < actions.length) {
                                         mRebootReason = actions[which];
-																		if (actions[which].equals(SOFT_REBOOT)) {
-																			doSoftReboot();
-																			return;
-																		}
-
-                                    mReboot = true;
-                                    beginShutdownSequence(context);
+                                        if (actions[which].equals(HOT_REBOOT)) {
+                                            mRebootHot = true;
+                                        }
+                                    }
+                                }
+                            })
+                            .setPositiveButton(com.android.internal.R.string.yes, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    if (mRebootHot) {
+                                        mRebootHot = false;
+                                        try {
+                                            final IActivityManager am =
+                                                    ActivityManagerNative.asInterface(ServiceManager.checkService("activity"));
+                                            if (am != null) {
+                                                am.restart();
+                                            }
+                                        } catch (RemoteException e) {
+                                            Log.e(TAG, "failure trying to perform hot reboot", e);
+                                        }
+                                    } else {
+                                        mReboot = true;
+                                        beginShutdownSequence(context);
+                                    }
+                                }
+                            })
+                            .setNegativeButton(com.android.internal.R.string.no,
+                                    new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    mReboot = false;
+                                    mRebootHot = false;
+                                    dialog.cancel();
                                 }
                             })
                             .create();
@@ -217,6 +243,7 @@ public final class ShutdownThread extends Thread {
                                         KeyEvent event) {
                                     if (keyCode == KeyEvent.KEYCODE_BACK) {
                                         mReboot = false;
+                                        mRebootHot = false;
                                         dialog.cancel();
                                     }
                                     return true;
@@ -251,20 +278,8 @@ public final class ShutdownThread extends Thread {
 
     private static int getAdvancedReboot(Context context) {
         return Settings.Secure.getInt(context.getContentResolver(),
-                Settings.Secure.ADVANCED_REBOOT, 0);
+                Settings.Secure.ADVANCED_REBOOT, 1);
     }
-
-		private static void doSoftReboot() {
-			try {
-			final IActivityManager am =
-			ActivityManagerNative.asInterface(ServiceManager.checkService("activity"));
-			if (am != null) {
-				am.restart();
-			}
-			} catch (RemoteException e) {
-				Log.e(TAG, "failure trying to perform soft reboot", e);
-			}
-		}
 
     private static class CloseDialogReceiver extends BroadcastReceiver
             implements DialogInterface.OnDismissListener {
@@ -560,7 +575,7 @@ public final class ShutdownThread extends Thread {
             }
         }
 
-        rebootOrShutdown(mReboot, mRebootReason);
+        rebootOrShutdown(mContext, mReboot, mRebootReason);
     }
 
     private void shutdownRadios(int timeout) {
@@ -676,18 +691,19 @@ public final class ShutdownThread extends Thread {
      * Do not call this directly. Use {@link #reboot(Context, String, boolean)}
      * or {@link #shutdown(Context, boolean)} instead.
      *
+     * @param context Context used to vibrate or null without vibration
      * @param reboot true to reboot or false to shutdown
      * @param reason reason for reboot
      */
-    public static void rebootOrShutdown(boolean reboot, String reason) {
+    public static void rebootOrShutdown(final Context context, boolean reboot, String reason) {
         deviceRebootOrShutdown(reboot, reason);
         if (reboot) {
             Log.i(TAG, "Rebooting, reason: " + reason);
             PowerManagerService.lowLevelReboot(reason);
             Log.e(TAG, "Reboot failed, will attempt shutdown instead");
-        } else if (SHUTDOWN_VIBRATE_MS > 0) {
+        } else if (SHUTDOWN_VIBRATE_MS > 0 && context != null) {
             // vibrate before shutting down
-            Vibrator vibrator = new SystemVibrator();
+            Vibrator vibrator = new SystemVibrator(context);
             try {
                 vibrator.vibrate(SHUTDOWN_VIBRATE_MS, VIBRATION_ATTRIBUTES);
             } catch (Exception e) {

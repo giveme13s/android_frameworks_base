@@ -34,7 +34,6 @@ public class SeekBarPreference extends Preference
 
     private int mProgress;
     private int mMax;
-    private int mCurrentValue;
     private boolean mTrackingTouch;
 
     public SeekBarPreference(
@@ -257,9 +256,5 @@ public class SeekBarPreference extends Preference
                 return new SavedState[size];
             }
         };
-    }
-
-    public void setValue(int value) {
-        mCurrentValue = value;
     }
 }

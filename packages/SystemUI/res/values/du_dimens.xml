@@ -15,13 +15,37 @@
      limitations under the License.
 -->
 <resources>
-    <dimen name="weather_text_size">12sp</dimen>
-
     <!-- Themes: radius of the corners of the notification dropshadow
          See also: notification_material_rounded_rect_radius
     -->
     <dimen name="notification_material_shadow_rounded_rect_radius">0dp</dimen>
     <dimen name="zen_mode_panel_radius">@dimen/notification_material_rounded_rect_radius</dimen>
     <dimen name="status_bar_expanded_header_elevation">4dp</dimen>
-    <dimen name="ribbon_drag_handle_height">25dp</dimen>
+
+    <!-- Floating action button -->
+    <dimen name="floating_action_button_height">54dp</dimen>
+    <dimen name="floating_action_button_width">54dp</dimen>
+    <dimen name="floating_action_button_translation_z">12dp</dimen>
+    <dimen name="floating_action_button_margin_side">42dp</dimen>
+    <dimen name="floating_action_button_margin_bottom">38dp</dimen>
+
+    <!-- Side padding for the status bar header -->
+    <dimen name="notification_header_side_padding">@dimen/notification_side_padding</dimen>
+
+    <!-- Side padding for the Quick Settings panel -->
+    <dimen name="qs_panel_side_padding">@dimen/notification_side_padding</dimen>
+
+    <!-- Padding end for weather text -->
+    <dimen name="status_bar_weather_padding_end">16dp</dimen>
+
+    <!-- Slim recent -->
+    <dimen name="recent_width">230dp</dimen>
+    <dimen name="slim_recents_elevation">20dp</dimen>
+    <dimen name="recent_app_icon_size">48dp</dimen>
+    <dimen name="recent_favorite_icon_size">18dp</dimen>
+    <dimen name="recent_thumbnail_width">198dp</dimen>
+    <dimen name="recent_thumbnail_height">140dp</dimen>
+    <dimen name="recent_header_width">120dp</dimen>
+    <dimen name="recent_text_size">20dp</dimen>
+    <dimen name="recent_thumbnail_bottom_padding">3dp</dimen>
 </resources>

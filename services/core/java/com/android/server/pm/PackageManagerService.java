@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright (C) 2006 The Android Open Source Project
@@ -511,7 +511,7 @@ public class PackageManagerService extends IPackageManager.Stub {
     // Packages whose data we have transfered into another package, thus
     // should no longer exist.
     final ArraySet<String> mTransferedPackages = new ArraySet<String>();
-    
+
     // Broadcast actions that are only available to the system.
     final ArraySet<String> mProtectedBroadcasts = new ArraySet<String>();
 
@@ -1470,9 +1470,9 @@ public class PackageManagerService extends IPackageManager.Stub {
         mAvailableFeatures = systemConfig.getAvailableFeatures();
         mSignatureAllowances = systemConfig.getSignatureAllowances();
 
-        synchronized (mInstallLock) {
+//        synchronized (mInstallLock) {
         // writer
-        synchronized (mPackages) {
+//        synchronized (mPackages) {
             mHandlerThread = new ServiceThread(TAG,
                     Process.THREAD_PRIORITY_BACKGROUND, true /*allowIo*/);
             mHandlerThread.start();
@@ -1949,8 +1949,8 @@ public class PackageManagerService extends IPackageManager.Stub {
 
 
             mRequiredVerifierPackage = getRequiredVerifierLPr();
-        } // synchronized (mPackages)
-        } // synchronized (mInstallLock)
+//        } // synchronized (mPackages)
+//        } // synchronized (mInstallLock)
 
         mInstallerService = new PackageInstallerService(context, this, mAppInstallDir);
 
@@ -2655,7 +2655,6 @@ public class PackageManagerService extends IPackageManager.Stub {
         if (!compareStrings(pi1.nonLocalizedLabel, pi2.nonLocalizedLabel)) return false;
         // We'll take care of setting this one.
         if (!compareStrings(pi1.packageName, pi2.packageName)) return false;
-        if (pi1.allowViaWhitelist != pi2.allowViaWhitelist) return false;
         // These are not currently stored in settings.
         //if (!compareStrings(pi1.group, pi2.group)) return false;
         //if (!compareStrings(pi1.nonLocalizedDescription, pi2.nonLocalizedDescription)) return false;
@@ -4293,6 +4292,12 @@ public class PackageManagerService extends IPackageManager.Stub {
                     + " flags=0x" + Integer.toHexString(parseFlags));
         }
 
+        Log.d(TAG, "start scanDirLI:"+dir);
+        int iMultitaskNum = SystemProperties.getInt("persist.pm.multitask",0);
+        boolean bMultitask = (iMultitaskNum > 1);
+        Log.d(TAG, "bMultitask:" + bMultitask + " max thread:" + iMultitaskNum);
+        final MultiTaskDealer dealer = bMultitask ? MultiTaskDealer.startDealer(MultiTaskDealer.PACKAGEMANAGER_SCANER, iMultitaskNum) : null;
+
         for (File file : files) {
             final boolean isPackage = (isApkFile(file) || file.isDirectory())
                     && !PackageInstallerService.isStageName(file.getName());
@@ -4300,23 +4305,42 @@ public class PackageManagerService extends IPackageManager.Stub {
                 // Ignore entries which are not packages
                 continue;
             }
-            try {
-                scanPackageLI(file, parseFlags | PackageParser.PARSE_MUST_BE_APK,
-                        scanFlags, currentTime, null);
-            } catch (PackageManagerException e) {
-                Slog.w(TAG, "Failed to parse " + file + ": " + e.getMessage());
 
-                // Delete invalid userdata apps
-                if ((parseFlags & PackageParser.PARSE_IS_SYSTEM) == 0 &&
+            final File ref_file = file;
+            final int ref_parseFlags = parseFlags;
+            final int ref_scanFlags = scanFlags;
+            final long ref_currentTime = currentTime;
+            Runnable scanTask = new Runnable() {
+            public void run() {
+                try {
+                    scanPackageLI(ref_file, ref_parseFlags | PackageParser.PARSE_MUST_BE_APK,
+                        ref_scanFlags, ref_currentTime, null);
+                } catch (PackageManagerException e) {
+                    Slog.w(TAG, "Failed to parse " + ref_file + ": " + e.getMessage());
+
+                     // Delete invalid userdata apps
+                    if ((ref_parseFlags & PackageParser.PARSE_IS_SYSTEM) == 0 &&
                         e.error == PackageManager.INSTALL_FAILED_INVALID_APK) {
-                    logCriticalInfo(Log.WARN, "Deleting invalid package at " + file);
-                    if (file.isDirectory()) {
-                        FileUtils.deleteContents(file);
+
+                        logCriticalInfo(Log.WARN, "Deleting invalid package at " + ref_file);
+
+                        if (ref_file.isDirectory()) {
+                            FileUtils.deleteContents(ref_file);
+                        }
+                        ref_file.delete();
                     }
-                    file.delete();
                 }
-            }
+            }};
+
+            if(dealer!=null)
+                dealer.addTask(scanTask);
+            else
+                scanTask.run();
         }
+
+        if(dealer!=null)
+            dealer.waitAll();
+        Log.d(TAG, "end scanDirLI:"+dir);
     }
 
     private static File getSettingsProblemFile() {
@@ -4330,7 +4354,7 @@ public class PackageManagerService extends IPackageManager.Stub {
         logCriticalInfo(priority, msg);
     }
 
-    static void logCriticalInfo(int priority, String msg) {
+    static synchronized void logCriticalInfo(int priority, String msg) {
         Slog.println(priority, TAG, msg);
         EventLogTags.writePmCriticalInfo(msg);
         try {
@@ -4760,41 +4784,6 @@ public class PackageManagerService extends IPackageManager.Stub {
                 if (pkgNames.contains(pkg.packageName)) {
                     if (DEBUG_DEXOPT) {
                         Log.i(TAG, "Adding pre boot system app " + sortedPkgs.size() + ": " + pkg.packageName);
-                    }
-                    sortedPkgs.add(pkg);
-                    it.remove();
-                }
-            }
-            // Give priority to system apps.
-            for (Iterator<PackageParser.Package> it = pkgs.iterator(); it.hasNext();) {
-                PackageParser.Package pkg = it.next();
-                if (isSystemApp(pkg) && !isUpdatedSystemApp(pkg)) {
-                    if (DEBUG_DEXOPT) {
-                        Log.i(TAG, "Adding system app " + sortedPkgs.size() + ": " + pkg.packageName);
-                    }
-                    sortedPkgs.add(pkg);
-                    it.remove();
-                }
-            }
-            // Give priority to updated system apps.
-            for (Iterator<PackageParser.Package> it = pkgs.iterator(); it.hasNext();) {
-                PackageParser.Package pkg = it.next();
-                if (isUpdatedSystemApp(pkg)) {
-                    if (DEBUG_DEXOPT) {
-                        Log.i(TAG, "Adding updated system app " + sortedPkgs.size() + ": " + pkg.packageName);
-                    }
-                    sortedPkgs.add(pkg);
-                    it.remove();
-                }
-            }
-            // Give priority to apps that listen for boot complete.
-            intent = new Intent(Intent.ACTION_BOOT_COMPLETED);
-            pkgNames = getPackageNamesForIntent(intent);
-            for (Iterator<PackageParser.Package> it = pkgs.iterator(); it.hasNext();) {
-                PackageParser.Package pkg = it.next();
-                if (pkgNames.contains(pkg.packageName)) {
-                    if (DEBUG_DEXOPT) {
-                        Log.i(TAG, "Adding boot app " + sortedPkgs.size() + ": " + pkg.packageName);
                     }
                     sortedPkgs.add(pkg);
                     it.remove();
@@ -6501,7 +6490,6 @@ public class PackageManagerService extends IPackageManager.Stub {
                                 bp.perm = p;
                                 bp.uid = pkg.applicationInfo.uid;
                                 bp.sourcePackage = p.info.packageName;
-                                bp.allowViaWhitelist = p.info.allowViaWhitelist;
                             } else if (!currentOwnerIsSystem) {
                                 String msg = "New decl " + p.owner + " of permission  "
                                         + p.info.name + " is system; overriding " + bp.sourcePackage;
@@ -7083,25 +7071,31 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     private void setUpCustomResolverActivity(PackageParser.Package pkg) {
         synchronized (mPackages) {
-            mResolverReplaced = true;
-            // Set up information for custom user intent resolution activity.
-            mResolveActivity.applicationInfo = pkg.applicationInfo;
-            mResolveActivity.name = mCustomResolverComponentName.getClassName();
-            mResolveActivity.packageName = pkg.applicationInfo.packageName;
-            mResolveActivity.processName = pkg.applicationInfo.packageName;
-            mResolveActivity.launchMode = ActivityInfo.LAUNCH_MULTIPLE;
-            mResolveActivity.flags = ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS |
-                    ActivityInfo.FLAG_FINISH_ON_CLOSE_SYSTEM_DIALOGS;
-            mResolveActivity.theme = 0;
-            mResolveActivity.exported = true;
-            mResolveActivity.enabled = true;
-            mResolveInfo.activityInfo = mResolveActivity;
-            mResolveInfo.priority = 0;
-            mResolveInfo.preferredOrder = 0;
-            mResolveInfo.match = 0;
-            mResolveComponentName = mCustomResolverComponentName;
-            Slog.i(TAG, "Replacing default ResolverActivity with custom activity: " +
-                    mResolveComponentName);
+            for (Activity a : pkg.activities) {
+                if (a.getComponentName().getClassName()
+                        .equals(mCustomResolverComponentName.getClassName())) {
+                    mResolverReplaced = true;
+                    // Set up information for custom user intent resolution activity.
+                    mResolveActivity.applicationInfo = pkg.applicationInfo;
+                    mResolveActivity.name = mCustomResolverComponentName.getClassName();
+                    mResolveActivity.packageName = pkg.applicationInfo.packageName;
+                    mResolveActivity.processName = pkg.applicationInfo.packageName;
+                    mResolveActivity.launchMode = ActivityInfo.LAUNCH_MULTIPLE;
+                    mResolveActivity.flags = ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS |
+                            ActivityInfo.FLAG_FINISH_ON_CLOSE_SYSTEM_DIALOGS;
+                    mResolveActivity.theme = a.info.theme;
+                    mResolveActivity.exported = true;
+                    mResolveActivity.enabled = true;
+                    mResolveInfo.activityInfo = mResolveActivity;
+                    mResolveInfo.priority = 0;
+                    mResolveInfo.preferredOrder = 0;
+                    mResolveInfo.match = 0;
+                    mResolveComponentName = mCustomResolverComponentName;
+                    Slog.i(TAG, "Replacing default ResolverActivity with custom activity: " +
+                            mResolveComponentName);
+                    break;
+                }
+            }
         }
     }
 

@@ -159,6 +159,15 @@ static void effectCallback(int event, void* user, void *info) {
         ALOGV("EVENT_PARAMETER_CHANGED");
        break;
     case AudioEffect::EVENT_ERROR:
+        if (info == 0) {
+            ALOGW("EVENT_ERROR info == NULL");
+            goto effectCallback_Exit;
+        }
+        status_t status = *(status_t *)info;
+        if (status == DEAD_OBJECT) {
+            ALOGE("effectCallback: Client died, no need to send callback");
+            goto effectCallback_Exit;
+        }
         ALOGW("EVENT_ERROR");
         break;
     }
@@ -407,6 +416,9 @@ setup_failure:
     env->SetLongField(thiz, fields.fidNativeAudioEffect, 0);
 
     if (lpJniStorage) {
+        // delete global refs created in native_setup
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.audioEffect_class);
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.audioEffect_ref);
         delete lpJniStorage;
     }
     env->SetLongField(thiz, fields.fidJniData, 0);
@@ -439,6 +451,9 @@ static void android_media_AudioEffect_native_finalize(JNIEnv *env,  jobject thiz
     AudioEffectJniStorage* lpJniStorage = (AudioEffectJniStorage *)env->GetLongField(
         thiz, fields.fidJniData);
     if (lpJniStorage) {
+        // delete global refs created in native_setup
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.audioEffect_class);
+        env->DeleteGlobalRef(lpJniStorage->mCallbackData.audioEffect_ref);
         ALOGV("deleting pJniStorage: %p\n", lpJniStorage);
         delete lpJniStorage;
     }

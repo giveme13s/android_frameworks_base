@@ -825,12 +825,12 @@ public class RemoteViewsAdapter extends BaseAdapter implements Handler.Callback 
         mContext = context;
         mIntent = intent;
 
-        mAppWidgetId = intent.getIntExtra(RemoteViews.EXTRA_REMOTEADAPTER_APPWIDGET_ID, -1);
-
-        mLayoutInflater = LayoutInflater.from(context);
         if (mIntent == null) {
             throw new IllegalArgumentException("Non-null Intent must be specified.");
         }
+
+        mAppWidgetId = intent.getIntExtra(RemoteViews.EXTRA_REMOTEADAPTER_APPWIDGET_ID, -1);
+        mLayoutInflater = LayoutInflater.from(context);
         mRequestedViews = new RemoteViewsFrameLayoutRefSet();
 
         // Strip the previously injected app widget id from service intent
@@ -1082,9 +1082,9 @@ public class RemoteViewsAdapter extends BaseAdapter implements Handler.Callback 
     }
 
     public int getCount() {
-        final RemoteViewsMetaData metaData = mCache.getMetaData();
-        synchronized (metaData) {
-            return metaData.count;
+        final RemoteViewsMetaData tmpMetaData = mCache.getTemporaryMetaData();
+        synchronized (tmpMetaData) {
+            return tmpMetaData.count;
         }
     }
 
@@ -1270,6 +1270,11 @@ public class RemoteViewsAdapter extends BaseAdapter implements Handler.Callback 
             return;
         }
 
+        // Clear the data in cache
+        final RemoteViewsMetaData metaData = mCache.getMetaData();
+        synchronized (metaData) {
+            metaData.reset();
+        }
         // Flush the cache so that we can reload new items from the service
         synchronized (mCache) {
             mCache.reset();

@@ -4292,7 +4292,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             out.append(" #");
             out.append(Integer.toHexString(id));
             final Resources r = mResources;
-            if (Resources.resourceHasPackage(id) && r != null) {
+            if (id > 0 && Resources.resourceHasPackage(id) && r != null) {
                 try {
                     String pkgname;
                     switch (id&0xff000000) {
@@ -11655,7 +11655,8 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             scrollCache.scrollBar = new ScrollBarDrawable();
         }
 
-        if (isHorizontalScrollBarEnabled() || isVerticalScrollBarEnabled()) {
+        if (isHorizontalScrollBarEnabled() ||
+                (isVerticalScrollBarEnabled() && !isVerticalScrollBarHidden())) {
 
             if (invalidate) {
                 // Invalidate to show the scrollbars
@@ -17534,22 +17535,17 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         long key = (long) widthMeasureSpec << 32 | (long) heightMeasureSpec & 0xffffffffL;
         if (mMeasureCache == null) mMeasureCache = new LongSparseLongArray(2);
 
-        final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT;
-        final boolean isExactly = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY &&
-                MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY;
-        final boolean matchingSize = isExactly &&
-                getMeasuredWidth() == MeasureSpec.getSize(widthMeasureSpec) &&
-                getMeasuredHeight() == MeasureSpec.getSize(heightMeasureSpec);
-        if (forceLayout || !matchingSize &&
-                (widthMeasureSpec != mOldWidthMeasureSpec ||
-                        heightMeasureSpec != mOldHeightMeasureSpec)) {
+        if ((mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT ||
+                widthMeasureSpec != mOldWidthMeasureSpec ||
+                heightMeasureSpec != mOldHeightMeasureSpec) {
 
             // first clears the measured dimension flag
             mPrivateFlags &= ~PFLAG_MEASURED_DIMENSION_SET;
 
             resolveRtlPropertiesIfNeeded();
 
-            int cacheIndex = forceLayout ? -1 : mMeasureCache.indexOfKey(key);
+            int cacheIndex = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT ? -1 :
+                    mMeasureCache.indexOfKey(key);
             if (cacheIndex < 0 || sIgnoreMeasureCache) {
                 // measure ourselves, this should set the measured dimension flag back
                 onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -17773,7 +17769,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     /**
      * Returns the suggested minimum width that the view should use. This
-     * returns the maximum of the view's minimum width)
+     * returns the maximum of the view's minimum width
      * and the background's minimum width
      *  ({@link android.graphics.drawable.Drawable#getMinimumWidth()}).
      * <p>
@@ -19877,9 +19873,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     /** @hide */
     public void hackTurnOffWindowResizeAnim(boolean off) {
-        if (mAttachInfo != null) {
-            mAttachInfo.mTurnOffWindowResizeAnim = off;
-        }
+        mAttachInfo.mTurnOffWindowResizeAnim = off;
     }
 
     /**

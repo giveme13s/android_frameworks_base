@@ -24,11 +24,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import android.app.ActivityManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.ContentObserver;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.net.wimax.WimaxManagerConstants;
 import android.os.Binder;
@@ -65,6 +69,9 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     static final boolean DEBUG = false;
     static final boolean CHATTY = true; // additional diagnostics, but not logspew
 
+    private int mUserId;
+    private SettingsObserver mSettingsObserver;
+
     // telephony
     boolean[] mMSimDataConnected;
     IccCardConstants.State[] mMSimState;
@@ -86,6 +93,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     int[] mMSimDataDirectionIconId; // data + data direction on phones
     int[] mMSimDataSignalIconId;
     int[] mMSimDataTypeIconId;
+    int[] mMSimDataRoamIconId;
     int[] mNoMSimIconId;
     int[] mMSimMobileActivityIconId; // overlay arrows for data direction
 
@@ -110,21 +118,21 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     int PHONE_ID2 = PhoneConstants.PHONE_ID2;
     private HashMap<Integer, Integer> mSubIdPhoneIdMap;
     ArrayList<MSimSignalCluster> mSimSignalClusters = new ArrayList<MSimSignalCluster>();
-    ArrayList<TextView> mSubsLabelViews = new ArrayList<TextView>();
 
     public interface MSimSignalCluster {
         void setWifiIndicators(boolean visible, int strengthIcon, int activityIcon,
                 String contentDescription);
         void setMobileDataIndicators(boolean visible, int strengthIcon, int activityIcon,
-                int typeIcon, String contentDescription, String typeContentDescription,
+                int typeIcon, int roamingIcon, String contentDescription, String typeContentDescription,
                 int phoneId, int noSimIcon);
         void setIsAirplaneMode(boolean is, int airplaneIcon);
+        void setShowEmptySimSlots(boolean show);
     }
 
     /**
      * Construct this controller object and register for updates.
      */
-    public MSimNetworkControllerImpl(Context context) {
+    public MSimNetworkControllerImpl(Context context, Handler handler) {
         super(context);
         int numPhones = TelephonyManager.getDefault().getPhoneCount();
         Slog.d(TAG, "registerPhoneStateListener numPhones: " + numPhones);
@@ -135,6 +143,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         mMSimIconId = new int[numPhones];
         mMSimPhoneSignalIconId = new int[numPhones];
         mMSimDataTypeIconId = new int[numPhones];
+        mMSimDataRoamIconId = new int[numPhones];
         mNoMSimIconId = new int[numPhones];
         mMSimMobileActivityIconId = new int[numPhones];
         mMSimContentDescriptionPhoneSignal = new String[numPhones];
@@ -216,6 +225,9 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         mLastCombinedSignalIconId = mMSimLastCombinedSignalIconId[mDefaultPhoneId];
         mLastDataTypeIconId = mMSimLastDataTypeIconId[mDefaultPhoneId];
         mLastSimIconId = mMSimLastSimIconId[mDefaultPhoneId];
+
+        mSettingsObserver = new SettingsObserver(handler);
+        mSettingsObserver.register();
     }
 
     @Override
@@ -280,7 +292,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     private int getPhoneId(int subId) {
         int phoneId;
         phoneId = SubscriptionManager.getPhoneId(subId);
-        Slog.d(TAG, "getPhoneId phoneId: " +phoneId);
+        if (DEBUG) Slog.d(TAG, "getPhoneId phoneId: " +phoneId);
         return phoneId;
     }
 
@@ -290,6 +302,11 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                 mPhone.listen(mMSimPhoneStateListener[i], PhoneStateListener.LISTEN_NONE);
             }
         }
+    }
+
+    public void setUserId(int userId) {
+        mUserId = userId;
+        mSettingsObserver.register();
     }
 
     public void addSignalCluster(MSimSignalCluster cluster, int phoneId) {
@@ -309,6 +326,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                 mMSimPhoneSignalIconId[phoneId],
                 mMSimMobileActivityIconId[phoneId],
                 mMSimDataTypeIconId[phoneId],
+                mMSimDataRoamIconId[phoneId],
                 mMSimContentDescriptionPhoneSignal[phoneId],
                 mMSimContentDescriptionDataType[phoneId],
                 phoneId,
@@ -320,6 +338,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                     mAlwaysShowCdmaRssi ? mPhoneSignalIconId : mWimaxIconId,
                     mMSimMobileActivityIconId[phoneId],
                     mMSimDataTypeIconId[phoneId],
+                    mMSimDataRoamIconId[phoneId],
                     mContentDescriptionWimax,
                     mMSimContentDescriptionDataType[phoneId],
                     phoneId,
@@ -332,12 +351,14 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                         : mMSimDataSignalIconId[phoneId],
                     mMSimMobileActivityIconId[phoneId],
                     mMSimDataTypeIconId[phoneId],
+                    mMSimDataRoamIconId[phoneId],
                     mMSimContentDescriptionPhoneSignal[phoneId],
                     mMSimContentDescriptionDataType[phoneId],
                     phoneId,
                     mNoMSimIconId[phoneId]);
         }
         cluster.setIsAirplaneMode(mAirplaneMode, mAirplaneIconId);
+        cluster.setShowEmptySimSlots(mSettingsObserver.showEmptySimIcons());
 
         if (DEBUG) {
             Slog.d(TAG, "refreshSignalCluster, mMSimPhoneSignalIconId[" + phoneId + "]="
@@ -456,14 +477,6 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         }
     }
 
-    public void addSubsLabelView(TextView v) {
-        mSubsLabelViews.add(v);
-    }
-
-    public void clearSubsLabelView() {
-        mSubsLabelViews.clear();
-    }
-
     private void updateCarrierText(int sub) {
         int textResId = 0;
         if (mAirplaneMode) {
@@ -513,17 +526,10 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
             carrierName = carrierName + "    " + mCarrierTextSub[i];
         }
 
-        if (mContext.getResources().getBoolean(R.bool.config_showDataConnectionView)) {
-            for (int i = 0; i < mSubsLabelViews.size(); i++) {
-                TextView v = mSubsLabelViews.get(i);
-                v.setText(carrierName);
-            }
-        } else {
-            for (int i = 0; i < mMobileLabelViews.size(); i++) {
-                TextView v = mMobileLabelViews.get(i);
-                v.setText(carrierName);
-                v.setVisibility(View.VISIBLE);
-            }
+        for (int i = 0; i < mMobileLabelViews.size(); i++) {
+            TextView v = mMobileLabelViews.get(i);
+            v.setText(carrierName);
+            v.setVisibility(View.VISIBLE);
         }
     }
 
@@ -719,7 +725,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     }
 
     private final void updateTelephonySignalStrength(int phoneId) {
-        Slog.d(TAG, "updateTelephonySignalStrength: phoneId =" + phoneId);
+        if (DEBUG) Slog.d(TAG, "updateTelephonySignalStrength: phoneId =" + phoneId);
         int dataSub = SubscriptionManager.getPhoneId(
                 SubscriptionManager.getDefaultDataSubId());
         if ((!hasService(phoneId) &&
@@ -838,11 +844,17 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                 }
             }
         } else if (isRoaming(phoneId)) {
-            mMSimDataTypeIconId[phoneId] = R.drawable.stat_sys_data_fully_connected_roam;
+            if (SystemProperties.getBoolean("ro.config.always_show_roaming", false)) {
+                mMSimDataRoamIconId[phoneId] = R.drawable.stat_sys_data_msim_roam;
+            } else {
+                mMSimDataTypeIconId[phoneId] = R.drawable.stat_sys_data_fully_connected_roam;
+            }
             setQSDataTypeIcon = true;
             if (phoneId == dataSub) {
                 mQSDataTypeIconId = R.drawable.stat_sys_data_fully_connected_roam;
             }
+        } else if (!isRoaming(phoneId)) {
+            mMSimDataRoamIconId[phoneId] = 0;
         }
 
         if (setQSDataTypeIcon && phoneId == dataSub) {
@@ -876,18 +888,18 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     }
 
     private void updateIconSet(int phoneId) {
-        Slog.d(TAG, "updateIconSet, phoneId = " + phoneId);
+        if (DEBUG) Slog.d(TAG, "updateIconSet, phoneId = " + phoneId);
         int voiceNetorkType = mMSimServiceState[phoneId].getVoiceNetworkType();
         int dataNetorkType =  mMSimServiceState[phoneId].getDataNetworkType();
-        Slog.d(TAG, "updateIconSet, voice network type is: " + voiceNetorkType
+
+        if (DEBUG) Slog.d(TAG, "updateIconSet, voice network type is: " + voiceNetorkType
             + "/" + TelephonyManager.getNetworkTypeName(voiceNetorkType)
             + ", data network type is: " + dataNetorkType
             + "/" + TelephonyManager.getNetworkTypeName(dataNetorkType));
-
         int chosenNetworkType = ((dataNetorkType == TelephonyManager.NETWORK_TYPE_UNKNOWN)
                     ? voiceNetorkType : dataNetorkType);
 
-        Slog.d(TAG, "updateIconSet, chosenNetworkType=" + chosenNetworkType
+        if (DEBUG) Slog.d(TAG, "updateIconSet, chosenNetworkType=" + chosenNetworkType
             + " hspaDataDistinguishable=" + String.valueOf(mHspaDataDistinguishable)
             + " hspapDistinguishable=" + "false"
             + " showAtLeastThreeGees=" + String.valueOf(mShowAtLeastThreeGees));
@@ -898,27 +910,27 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
     }
 
     private final void updateDataIcon(int phoneId) {
-        Slog.d(TAG,"updateDataIcon phoneId =" + phoneId);
+        if (DEBUG) Slog.d(TAG,"updateDataIcon phoneId =" + phoneId);
         int iconId = 0;
         boolean visible = true;
         int dataSub = SubscriptionManager.getPhoneId(
                 SubscriptionManager.getDefaultDataSubId());
 
-        Slog.d(TAG,"updateDataIcon dataSub =" + dataSub);
+        if (DEBUG) Slog.d(TAG,"updateDataIcon dataSub =" + dataSub);
         // DSDS case: Data is active only on DDS. Clear the icon for NON-DDS
         if (phoneId != dataSub) {
             mMSimDataConnected[phoneId] = false;
-            Slog.d(TAG,"updateDataIconi: phoneId" + phoneId
+            if (DEBUG) Slog.d(TAG,"updateDataIconi: phoneId" + phoneId
                      + " is not DDS.  Clear the mMSimDataConnected Flag and return");
             return;
         }
 
-        Slog.d(TAG,"updateDataIcon  when SimState =" + mMSimState[phoneId]);
         if (mMSimDataNetType[phoneId] == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+        if (DEBUG) Slog.d(TAG,"updateDataIcon  when SimState =" + mMSimState[phoneId]);
             // If data network type is unknown do not display data icon
             visible = false;
         } else {
-            Slog.d(TAG,"updateDataIcon  when gsm mMSimState =" + mMSimState[phoneId]);
+            if (DEBUG) Slog.d(TAG,"updateDataIcon  when gsm mMSimState =" + mMSimState[phoneId]);
             if (mMSimState[phoneId] == IccCardConstants.State.READY ||
                 mMSimState[phoneId] == IccCardConstants.State.UNKNOWN) {
                 mNoSim = false;
@@ -930,7 +942,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                     visible = false;
                 }
             } else {
-                Slog.d(TAG,"updateDataIcon when no sim");
+                if (DEBUG) Slog.d(TAG,"updateDataIcon when no sim");
                 mNoSim = true;
                 iconId = TelephonyIcons.getNoSimIcon();
                 visible = false; // no SIM? no data
@@ -942,7 +954,7 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         mMSimDataConnected[phoneId] = visible;
         mDataConnected = visible;
 
-        Slog.d(TAG,"updateDataIcon when mMSimDataConnected[" + phoneId + "] ="
+        if (DEBUG) Slog.d(TAG,"updateDataIcon when mMSimDataConnected[" + phoneId + "] ="
             + mMSimDataConnected[phoneId]
             + " mMSimMobileActivityIconId[" + phoneId +"] = "
             + mMSimMobileActivityIconId[phoneId]);
@@ -1046,9 +1058,11 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         String mobileLabel = "";
         String wifiLabel = "";
         int N;
-        Slog.d(TAG,"refreshViews phoneId =" + phoneId + "mMSimDataConnected ="
-                + mMSimDataConnected[phoneId]);
-        Slog.d(TAG,"refreshViews mMSimDataActivity =" + mMSimDataActivity[phoneId]);
+        if (DEBUG) {
+            Slog.d(TAG,"refreshViews phoneId =" + phoneId + "mMSimDataConnected ="
+                    + mMSimDataConnected[phoneId]);
+            Slog.d(TAG,"refreshViews mMSimDataActivity =" + mMSimDataActivity[phoneId]);
+        }
         int dataSub = SubscriptionManager.getPhoneId(
                 SubscriptionManager.getDefaultDataSubId());
         if (!mHasMobileDataFeature) {
@@ -1201,8 +1215,8 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         }
 
         if (!mMSimDataConnected[phoneId]) {
-            Slog.d(TAG, "refreshViews: Data not connected!! Set no data type icon / Roaming for"
-                    + " phoneId: " + phoneId);
+            if (DEBUG) Slog.d(TAG, "refreshViews: Data not connected!!"
+                    + " Set no data type icon / Roaming for phoneId: " + phoneId);
             mMSimDataTypeIconId[phoneId] = 0;
             if (phoneId == dataSub) {
                 mQSDataTypeIconId = 0;
@@ -1216,10 +1230,16 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
                     }
                 }
             } else if (isRoaming(phoneId)) {
-                mMSimDataTypeIconId[phoneId] = R.drawable.stat_sys_data_fully_connected_roam;
+                if (SystemProperties.getBoolean("ro.config.always_show_roaming", false)) {
+                    mMSimDataRoamIconId[phoneId] = R.drawable.stat_sys_data_msim_roam;
+                } else {
+                    mMSimDataTypeIconId[phoneId] = R.drawable.stat_sys_data_fully_connected_roam;
+                }
                 if (phoneId == dataSub) {
                     mQSDataTypeIconId = R.drawable.stat_sys_data_fully_connected_roam;
                 }
+            } else if (!isRoaming(phoneId)) {
+                mMSimDataRoamIconId[phoneId] = 0;
             }
         }
 
@@ -1494,5 +1514,44 @@ public class MSimNetworkControllerImpl extends NetworkControllerImpl {
         pw.print("  mMSimLastCombinedLabel=");
         pw.print(mLastCombinedLabel);
         pw.println("");
+    }
+
+    private final class SettingsObserver extends ContentObserver {
+        private final ContentResolver mResolver;
+        private boolean mRegistered;
+        private final Uri EMPTY_ICONS_URI = Settings.System.getUriFor(
+                Settings.System.STATUS_BAR_MSIM_SHOW_EMPTY_ICONS);
+
+        public SettingsObserver(Handler handler) {
+            super(handler);
+            mResolver = mContext.getContentResolver();
+        }
+
+        public boolean showEmptySimIcons() {
+            return Settings.System.getIntForUser(mResolver,
+                    Settings.System.STATUS_BAR_MSIM_SHOW_EMPTY_ICONS, 1, mUserId) != 0;
+        }
+
+        public void register() {
+            if (mRegistered) {
+                mResolver.unregisterContentObserver(this);
+            }
+            mResolver.registerContentObserver(EMPTY_ICONS_URI, false, this, mUserId);
+            updateSettings();
+        }
+
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            if (EMPTY_ICONS_URI.equals(uri)) {
+                updateSettings();
+            }
+        }
+
+        private void updateSettings() {
+            boolean showEmptySlots = showEmptySimIcons();
+            for (MSimSignalCluster cluster : mSimSignalClusters) {
+                cluster.setShowEmptySimSlots(showEmptySlots);
+            }
+        }
     }
 }

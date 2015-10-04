@@ -1286,6 +1286,11 @@
     <string name="permdesc_getPackageSize">Allows the app to retrieve its code, data, and cache sizes</string>
 
     <!-- Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
+    <string name="permlab_fakePackageSignature">mimic package signature</string>
+    <!-- Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
+    <string name="permdesc_fakePackageSignature">Allows the app to use mimic another app\'s package signature.</string>
+
+    <!-- Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
     <string name="permlab_installPackages">directly install apps</string>
     <!-- Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
     <string name="permdesc_installPackages">Allows the app to install new or updated
@@ -3729,10 +3734,10 @@
       has violated its self-enforced StrictMode policy.</string>
 
     <!-- [CHAR LIMIT=40] Title of dialog that is shown when performing a system upgrade. -->
-    <string name="android_upgrading_title">Android is upgrading\u2026</string>
+    <string name="android_upgrading_title">Dirty Unicorns is upgrading\u2026</string>
 
     <!-- [CHAR LIMIT=40] Title of dialog that is shown when system is starting. -->
-    <string name="android_start_title">Android is starting\u2026</string>
+    <string name="android_start_title">Dirty Unicorns is starting\u2026</string>
 
     <!-- [CHAR LIMIT=NONE] Message shown in upgrading dialog when doing an fstrim. -->
     <string name="android_upgrading_fstrim">Optimizing storage.</string>
@@ -5102,7 +5107,7 @@
     <string name="day_of_week_label_typeface">sans-serif</string>
 
     <!-- Notify use that they are in Lock-to-app -->
-    <string name="lock_to_app_toast">To unpin this screen, touch and hold Back and Overview at the same time.</string>
+    <string name="lock_to_app_toast">To unpin this screen, touch and hold the two 3-dot menu buttons at the same time.</string>
     <!-- Notify use that they are in Lock-to-app in accessibility mode -->
     <string name="lock_to_app_toast_accessible">To unpin this screen, touch and hold Overview.</string>
     <!-- Notify user that they are locked in lock-to-app mode -->

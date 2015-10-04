@@ -222,7 +222,6 @@ public class DragDownHelper implements Gefingerpoken {
         /**
          * @return true if the interaction is accepted, false if it should be cancelled
          */
-        //boolean onDraggedDown(View startingChild);
         boolean onDraggedDown(View startingChild, int dragLengthY);
         void onDragDownReset();
         void onThresholdReached();

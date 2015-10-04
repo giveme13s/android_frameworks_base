@@ -244,6 +244,11 @@ interface IWindowManager
     boolean hasNavigationBar();
 
     /**
+     * Device needs a software navigation bar (because it has no hardware keys).
+     */
+    boolean needsNavigationBar();
+
+    /**
      * Lock the device immediately with the specified options (can be null).
      */
     void lockNow(in Bundle options);
@@ -257,18 +262,6 @@ interface IWindowManager
      * Enables the screen if all conditions are met.
      */
     void enableScreenIfNeeded();
-
-    /**
-     * Toggle global menu
-     * @hide
-     */
-    void toggleGlobalMenu();
-
-    /** FLOAT VIEW **/
-    Rect getAppFullscreenViewRect();
-    Rect getAppMinimumViewRect();
-    Rect getFloatViewRect();
-    void notifyFloatActivityTouched(IBinder token, boolean force);
 
     /**
      * Clears the frame statistics for a given window.
@@ -292,4 +285,11 @@ interface IWindowManager
      * @hide
      */
     int getSystemUIVisibility();
+
+    /**
+     * Toggle global menu
+     *
+     * @hide
+     */
+    void toggleGlobalMenu();
 }

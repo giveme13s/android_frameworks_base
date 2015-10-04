@@ -61,7 +61,7 @@ public class NavBarTile extends QSTile<QSTile.BooleanState> {
     protected void handleSecondaryClick() {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.setClassName("com.android.settings",
-            "com.android.settings.Settings$NavBarActivity");
+            "com.android.settings.Settings$NavbarSettingsActivity");
         mHost.startSettingsActivity(intent);
     }
 
@@ -69,7 +69,7 @@ public class NavBarTile extends QSTile<QSTile.BooleanState> {
     public void handleLongClick() {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.setClassName("com.android.settings",
-            "com.android.settings.Settings$NavBarActivity");
+            "com.android.settings.Settings$NavbarSettingsActivity");
         mHost.startSettingsActivity(intent);
     }
 
@@ -82,14 +82,14 @@ public class NavBarTile extends QSTile<QSTile.BooleanState> {
     @Override
     protected void handleUpdateState(BooleanState state, Object arg) {
         state.visible = true;
-	if (navbarEnabled()) {
-        state.icon = ResourceIcon.get(R.drawable.ic_qs_navbar_on);
-        state.label = mContext.getString(R.string.quick_settings_navbar_on);
-	} else {
-        state.icon = ResourceIcon.get(R.drawable.ic_qs_navbar_off);
-	state.label = mContext.getString(R.string.quick_settings_navbar_off);
-	    }
-	}
+        if (navbarEnabled()) {
+            state.icon = ResourceIcon.get(R.drawable.ic_qs_navbar_on);
+            state.label = mContext.getString(R.string.quick_settings_navbar);
+        } else {
+            state.icon = ResourceIcon.get(R.drawable.ic_qs_navbar_off);
+            state.label = mContext.getString(R.string.quick_settings_navbar);
+        }
+    }
 
     private boolean navbarEnabled() {
         return Settings.System.getInt(mContext.getContentResolver(),
@@ -128,4 +128,3 @@ public class NavBarTile extends QSTile<QSTile.BooleanState> {
         }
     }
 }
-

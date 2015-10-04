@@ -47,9 +47,9 @@ import android.view.animation.AnticipateOvershootInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import com.android.systemui.cm.ActionTarget;
-import com.android.systemui.cm.NavigationRingHelpers;
-import com.android.systemui.cm.ShortcutPickHelper;
+import com.android.internal.util.slim.Action;
+import com.android.systemui.slimnavrings.NavigationRingHelpers;
+import com.android.systemui.slimnavrings.ShortcutPickHelper;
 import com.android.systemui.statusbar.BaseStatusBar;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.StatusBarPanel;
@@ -58,9 +58,9 @@ import com.android.systemui.statusbar.phone.PhoneStatusBar;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.android.systemui.cm.NavigationRingConstants.ACTION_ASSIST;
-import static com.android.systemui.cm.NavigationRingConstants.ACTION_NONE;
-import static com.android.systemui.cm.NavigationRingConstants.BROADCAST;
+import static com.android.internal.util.slim.SlimActionConstants.ACTION_ASSIST;
+import static com.android.internal.util.slim.SlimActionConstants.ACTION_NULL;
+import static com.android.systemui.slimnavrings.NavigationRingConstants.BROADCAST;
 
 public class SearchPanelView extends FrameLayout implements StatusBarPanel,
         View.OnClickListener, ShortcutPickHelper.OnPickListener {
@@ -96,8 +96,9 @@ public class SearchPanelView extends FrameLayout implements StatusBarPanel,
     private ImageView mSelectedView;
     private List<ImageView> mTargetViews;
     private ImageView mLogoRight, mLogoLeft;
-    private final ActionTarget mActionTarget;
     private ShortcutPickHelper mPicker;
+
+    private ComponentName mCurrentAssistComponent = null;
 
     public SearchPanelView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -107,7 +108,6 @@ public class SearchPanelView extends FrameLayout implements StatusBarPanel,
         super(context, attrs, defStyle);
         mContext = context;
         mThreshold = context.getResources().getDimensionPixelSize(R.dimen.search_panel_threshold);
-        mActionTarget = new ActionTarget(context);
         mPicker = new ShortcutPickHelper(mContext, this);
         mTargetViews = new ArrayList<ImageView>();
         // Instantiate receiver/observer
@@ -174,8 +174,8 @@ public class SearchPanelView extends FrameLayout implements StatusBarPanel,
         Intent intent = ((SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE))
                 .getAssistIntent(mContext, false, UserHandle.USER_CURRENT);
         if (intent != null) {
-            ComponentName component = intent.getComponent();
-            replaceDrawable(view, component, ASSIST_ICON_METADATA_NAME);
+            mCurrentAssistComponent = intent.getComponent();
+            replaceDrawable(view, mCurrentAssistComponent, ASSIST_ICON_METADATA_NAME);
         } else {
             mLogo.setImageDrawable(null);
         }
@@ -389,9 +389,7 @@ public class SearchPanelView extends FrameLayout implements StatusBarPanel,
             return;
         }
         mLaunching = true;
-        if (!mActionTarget.launchAction(mTargetActivities[mCircle.mIntersectIndex])) {
-            startAssistActivity();
-        }
+        Action.processAction(mContext, mTargetActivities[mCircle.mIntersectIndex], false);
         vibrate();
         mCircle.setAnimatingOut(true);
         mCircle.startExitAnimation(new Runnable() {
@@ -478,13 +476,36 @@ public class SearchPanelView extends FrameLayout implements StatusBarPanel,
         updateTargetVisibility();
     }
 
+    private void maybeUpdateSearchDrawables() {
+        // Nothing to do if no assistants are available
+        if (!isAssistantAvailable()) return;
+
+        Intent intent = ((SearchManager) mContext.getSystemService(Context.SEARCH_SERVICE))
+                .getAssistIntent(mContext, false, UserHandle.USER_CURRENT);
+        final ComponentName component = intent != null ? intent.getComponent() : null;
+        if (component != null && !component.equals(mCurrentAssistComponent)) {
+            mCurrentAssistComponent = component;
+            mTargetActivities = NavigationRingHelpers.getTargetActions(mContext);
+            for (int i = 0; i < NavigationRingHelpers.MAX_ACTIONS; i++) {
+                ImageView target = mTargetViews.get(i);
+                String action = mTargetActivities[i];
+
+                if (isAssistantAvailable() && ((TextUtils.isEmpty(action) && target == mLogo)
+                        || ACTION_ASSIST.equals(action))) {
+                    replaceDrawable(target, component, ASSIST_ICON_METADATA_NAME);
+                    continue;
+                }
+            }
+        }
+    }
+
     private void updateTargetVisibility() {
         for (int i = 0; i < mTargetViews.size(); i++) {
             View v = mTargetViews.get(i);
             View parent = (View) v.getParent();
             String action = mTargetActivities[i];
             boolean visible = mInEditMode
-                    || (!TextUtils.isEmpty(action) && !ACTION_NONE.equals(action));
+                    || (!TextUtils.isEmpty(action) && !ACTION_NULL.equals(action));
             parent.setVisibility(visible ? View.VISIBLE : View.GONE);
         }
     }

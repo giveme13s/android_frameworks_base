@@ -119,6 +119,7 @@ import android.os.MessageQueue.IdleHandler;
 import android.os.PowerManagerInternal;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -160,6 +161,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -251,6 +253,8 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
 
     volatile boolean mScreenOn;
     volatile boolean mRestrictBackground;
+    volatile boolean mZeroBalanceRestricted = false;
+    volatile boolean mLastUserSetting;
     volatile boolean mRestrictPower;
 
     private final boolean mSuppressDefaultPolicy;
@@ -298,6 +302,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
 
     // TODO: migrate notifications to SystemUI
 
+    private static final String PKG_BROWSER = "com.android.browser";
     public NetworkPolicyManagerService(Context context, IActivityManager activityManager,
             IPowerManager powerManager, INetworkStatsService networkStats,
             INetworkManagementService networkManagement) {
@@ -909,6 +914,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
      * has been enabled.
      */
     private void enqueueRestrictedNotification(String tag) {
+        if (mZeroBalanceRestricted) return;
         final Resources res = mContext.getResources();
         final Notification.Builder builder = new Notification.Builder(mContext);
 
@@ -1271,7 +1277,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
         try {
             fis = mPolicyFile.openRead();
             final XmlPullParser in = Xml.newPullParser();
-            in.setInput(fis, null);
+            in.setInput(fis, StandardCharsets.UTF_8.name());
 
             int type;
             int version = VERSION_INIT;
@@ -1369,7 +1375,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
                     }
                 }
             }
-
+            mLastUserSetting = mRestrictBackground;
         } catch (FileNotFoundException e) {
             // missing policy is okay, probably first boot
             upgradeLegacyBackgroundData();
@@ -1406,7 +1412,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
             fos = mPolicyFile.startWrite();
 
             XmlSerializer out = new FastXmlSerializer();
-            out.setOutput(fos, "utf-8");
+            out.setOutput(fos, StandardCharsets.UTF_8.name());
             out.startDocument(null, true);
 
             out.startTag(null, TAG_POLICY_LIST);
@@ -1683,6 +1689,42 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
         }
     }
 
+    public void setRestrictBackground2(boolean restrictBackground) {
+        mContext.enforceCallingOrSelfPermission(MANAGE_NETWORK_POLICY, TAG);
+        mZeroBalanceRestricted = restrictBackground;
+
+        maybeRefreshTrustedTime();
+        synchronized (mRulesLock) {
+            if (!restrictBackground && mLastUserSetting) {
+                mRestrictBackground = mLastUserSetting;
+            } else if (mRestrictBackground != restrictBackground) {
+                mRestrictBackground = restrictBackground;
+                updateRulesForGlobalChangeLocked(false);
+            }
+            updateNotificationsLocked();
+        }
+
+        mHandler.obtainMessage(MSG_RESTRICT_BACKGROUND_CHANGED, restrictBackground ? 1 : 0, 0)
+                .sendToTarget();
+    }
+
+    public void blockAllData(boolean isBlockAllData) {
+        try {
+            mNetworkManager.setBlockAllDataRule(isBlockAllData);
+        } catch (IllegalStateException e) {
+            Log.wtf(TAG, "Problem setting zero balance rules to block all data", e);
+        } catch (RemoteException e) {
+        }
+    }
+
+    public boolean getRestrictBackground2() {
+        mContext.enforceCallingOrSelfPermission(MANAGE_NETWORK_POLICY, TAG);
+
+        synchronized (mRulesLock) {
+            return mZeroBalanceRestricted;
+        }
+    }
+
     @Override
     public void setRestrictBackground(boolean restrictBackground) {
         mContext.enforceCallingOrSelfPermission(MANAGE_NETWORK_POLICY, TAG);
@@ -1690,6 +1732,7 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
         maybeRefreshTrustedTime();
         synchronized (mRulesLock) {
             mRestrictBackground = restrictBackground;
+            mLastUserSetting = mRestrictBackground;
             updateRulesForGlobalChangeLocked(false);
             updateNotificationsLocked();
             writePolicyLocked();
@@ -2009,6 +2052,26 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
         return false;
     }
 
+    private boolean isUidValidForRulesBrowser(int uid) {
+        // allow rules on specific  brwoser ibsystem services, and any apps
+        if(mContext.getResources().getBoolean(R.bool.config_zero_balance_operator) &&
+                SystemProperties.get("sys.background.data.disable").equals("true")) {
+        /// system property set zero balance set
+
+            final boolean uidForeground = isUidForegroundLocked(uid);
+            String pkg_name = mContext.getPackageManager().getNameForUid(uid);
+            //Log.d("ZeroBalance", "App Name : "+pkg_name+" uid :"+uid);
+            if (uidForeground && (pkg_name!=null && (pkg_name.equals(PKG_BROWSER)))) {
+                Log.d("ZeroBalance", "In Whitelist so allow" );
+                mUidRules.delete(uid);
+                return true;
+            } else {
+                return false ;
+            }
+        }
+        return true;
+    }
+
     void updateRulesForUidLocked(int uid) {
         if (!isUidValidForRules(uid)) return;
 
@@ -2036,6 +2099,9 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
             }
         }
 
+        if(!isUidValidForRulesBrowser(uid)) {
+            uidRules = RULE_REJECT_METERED;
+        }
         // TODO: only dispatch when rules actually change
 
         if (uidRules == RULE_ALLOW_ALL) {

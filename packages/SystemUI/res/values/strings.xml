@@ -982,10 +982,4 @@
     <!-- Pie tile -->
     <string name="quick_settings_pie">Pie</string>
 
-    <!-- Screen off tile -->
-    <string name="quick_settings_screen_off">Screen off</string>
-
-    <!-- Power menu -->
-    <string name="quick_settings_power_menu_label">Power Menu</string>
-
 </resources>

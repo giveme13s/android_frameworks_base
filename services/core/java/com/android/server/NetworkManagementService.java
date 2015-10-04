@@ -21,6 +21,7 @@ import static android.Manifest.permission.CONNECTIVITY_INTERNAL;
 import static android.Manifest.permission.DUMP;
 import static android.Manifest.permission.SHUTDOWN;
 import static android.net.NetworkStats.SET_DEFAULT;
+import static android.net.NetworkStats.SET_ALL;
 import static android.net.NetworkStats.TAG_ALL;
 import static android.net.NetworkStats.TAG_NONE;
 import static android.net.NetworkStats.UID_ALL;
@@ -40,6 +41,7 @@ import static com.android.server.NetworkManagementService.NetdResponseCode.TtyLi
 import static com.android.server.NetworkManagementSocketTagger.PROP_QTAGUID_ENABLED;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.net.INetworkManagementEventObserver;
 import android.net.InterfaceConfiguration;
@@ -1415,7 +1417,10 @@ public class NetworkManagementService extends INetworkManagementService.Stub
             WifiConfiguration wifiConfig, String wlanIface) {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
-            wifiFirmwareReload(wlanIface, "AP");
+            if (mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_wifiApFirmwareReload)) {
+                wifiFirmwareReload(wlanIface, "AP");
+            }
             if (wifiConfig == null) {
                 mConnector.execute("softap", "set", wlanIface);
             } else {
@@ -1546,8 +1551,17 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     @Override
     public NetworkStats getNetworkStatsSummaryDev() {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
+        NetworkStats totalStats = null;
+        NetworkStats ipaTetherStats = null;
         try {
-            return mStatsFactory.readNetworkStatsSummaryDev();
+            ipaTetherStats = getHardwareTetherStats();
+        } catch (Exception e) {
+        };
+        try {
+            totalStats = mStatsFactory.readNetworkStatsSummaryDev();
+            if(ipaTetherStats != null)totalStats.combineAllValues(ipaTetherStats);
+            Slog.d(TAG,"getNetworkStatsSummaryDev:"+totalStats);
+            return totalStats;
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -1556,8 +1570,17 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     @Override
     public NetworkStats getNetworkStatsSummaryXt() {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
+        NetworkStats totalStats = null;
+        NetworkStats ipaTetherStats = null;
         try {
-            return mStatsFactory.readNetworkStatsSummaryXt();
+            ipaTetherStats = getHardwareTetherStats();
+        } catch (Exception e) {
+        };
+        try {
+            totalStats = mStatsFactory.readNetworkStatsSummaryXt();
+            if(ipaTetherStats != null) totalStats.combineAllValues(ipaTetherStats);
+            Slog.d(TAG,"getNetworkStatsSummaryXt:"+totalStats);
+            return totalStats;
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -1718,6 +1741,21 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         }
     }
 
+     @Override
+     public void setBlockAllDataRule(boolean isBlockAllData) {
+        mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
+
+        // silently discard when control disabled
+        // TODO: eventually migrate to be always enabled
+        if (!mBandwidthControlEnabled) return;
+        try {
+            mConnector.execute("bandwidth",
+                    isBlockAllData ? "blockAllData" : "unblockAllData");
+        } catch (NativeDaemonConnectorException e) {
+            throw e.rethrowAsParcelableException();
+        }
+    }
+
     @Override
     public boolean isBandwidthControlEnabled() {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
@@ -1733,6 +1771,44 @@ public class NetworkManagementService extends INetworkManagementService.Stub
             throw new IllegalStateException(e);
         }
     }
+
+    private NetworkStats getHardwareTetherStats() {
+        final NetworkStats stats = new NetworkStats(SystemClock.elapsedRealtime(), 1);
+        try {
+            final NativeDaemonEvent[] events = mConnector.executeForList(
+                    "bandwidth", "gethardwaretetherstats");
+            for (NativeDaemonEvent event : events) {
+                if (event.getCode() != TetheringStatsListResult) continue;
+
+                // 114 ifaceIn ifaceOut rx_bytes rx_packets tx_bytes tx_packets
+                final StringTokenizer tok = new StringTokenizer(event.getMessage());
+                try {
+                    final String ifaceIn = tok.nextToken();
+                    final String ifaceOut = tok.nextToken();
+
+                    final NetworkStats.Entry entry = new NetworkStats.Entry();
+                    entry.iface = ifaceOut;
+                    entry.uid = UID_ALL;
+                    entry.set = SET_ALL;
+                    entry.tag = TAG_NONE;
+                    entry.rxBytes = Long.parseLong(tok.nextToken());
+                    entry.rxPackets = Long.parseLong(tok.nextToken());
+                    entry.txBytes = Long.parseLong(tok.nextToken());
+                    entry.txPackets = Long.parseLong(tok.nextToken());
+                    stats.combineValues(entry);
+                } catch (NoSuchElementException e) {
+                    throw new IllegalStateException("problem parsing tethering stats: " + event);
+                } catch (NumberFormatException e) {
+                    throw new IllegalStateException("problem parsing tethering stats: " + event);
+                }
+            }
+        } catch (NativeDaemonConnectorException e) {
+            throw e.rethrowAsParcelableException();
+        }
+        Slog.d(TAG,"hardware tether stats:"+stats);
+        return stats;
+    }
+
 
     @Override
     public NetworkStats getNetworkStatsTethering() {

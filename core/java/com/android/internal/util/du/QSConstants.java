@@ -45,21 +45,17 @@ public class QSConstants {
     public static final String TILE_USB_TETHER = "usb_tether";
     public static final String TILE_BRIGHTNESS = "brightness";
     public static final String TILE_BATTERY_SAVER = "battery_saver";
-    public static final String TILE_SCREEN_OFF = "screen_off";
     public static final String TILE_HEADS_UP = "toggleHeadsUp";
     public static final String TILE_APPCIRCLEBAR = "toggleAppCircleBar";
     public static final String TILE_AMBIENT_DISPLAY = "ambient_display";
     public static final String TILE_MUSIC = "music";
     public static final String TILE_COMPASS = "compass";
-    public static final String TILE_POWER_MENU = "power_menu";
     public static final String TILE_NFC = "nfc";
     public static final String TILE_ADB_NETWORK = "adb_network";
     public static final String TILE_NAVBAR = "toggleNavBar";
     public static final String TILE_PIE = "pie";
     public static final String TILE_EXPANDED_DESKTOP = "expanded_desktop";
     public static final String TILE_VOLUME = "volume_panel";
-    public static final String TILE_LTE = "lte";
-    public static final String TILE_SLIM_FLOATS = "slim_floats";
 
     // Order matters
     protected static final ArrayList<String> TILES_DEFAULT = new ArrayList<String>();
@@ -106,9 +102,5 @@ public class QSConstants {
         TILES_AVAILABLE.add(TILE_PIE);
         TILES_AVAILABLE.add(TILE_EXPANDED_DESKTOP);
         TILES_AVAILABLE.add(TILE_VOLUME);
-        TILES_AVAILABLE.add(TILE_LTE);
-        TILES_AVAILABLE.add(TILE_SLIM_FLOATS);
-        TILES_AVAILABLE.add(TILE_SCREEN_OFF);
-        TILES_AVAILABLE.add(TILE_POWER_MENU);
     }
 }
