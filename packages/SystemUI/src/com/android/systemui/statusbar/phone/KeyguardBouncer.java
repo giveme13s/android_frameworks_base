@@ -194,24 +194,40 @@ public class KeyguardBouncer {
      * @return True if and only if the security method should be shown before showing the
      * notifications on Keyguard, like SIM PIN/PUK.
      */
-    public boolean needsFullscreenBouncer() {
+    public int needsFullscreenBouncer() {
         if (mKeyguardView != null) {
             SecurityMode mode = mKeyguardView.getSecurityMode();
-            return mode == SecurityMode.SimPin || mode == SecurityMode.SimPuk;
+            if(mode == SecurityMode.SimPin ||
+               mode == SecurityMode.SimPuk)
+                return 1;
+            else if((mode == SecurityMode.Pattern ||
+                     mode == SecurityMode.Password ||
+                     mode == SecurityMode.PIN ||
+                     mode == SecurityMode.Gesture)
+                     && (mLockPatternUtils != null && mLockPatternUtils.shouldPassToSecurityView()))
+                return 2;
         }
-        return false;
+        return 0;
     }
 
     /**
      * Like {@link #needsFullscreenBouncer}, but uses the currently visible security method, which
      * makes this method much faster.
      */
-    public boolean isFullscreenBouncer() {
+    public int isFullscreenBouncer() {
         if (mKeyguardView != null) {
             SecurityMode mode = mKeyguardView.getCurrentSecurityMode();
-            return mode == SecurityMode.SimPin || mode == SecurityMode.SimPuk;
+            if(mode == SecurityMode.SimPin ||
+               mode == SecurityMode.SimPuk)
+                return 1;
+            else if((mode == SecurityMode.Pattern ||
+                     mode == SecurityMode.Password ||
+                     mode == SecurityMode.PIN ||
+                     mode == SecurityMode.Gesture)
+                     && (mLockPatternUtils != null && mLockPatternUtils.shouldPassToSecurityView()))
+                return 2;
         }
-        return false;
+        return 0;
     }
 
     /**
