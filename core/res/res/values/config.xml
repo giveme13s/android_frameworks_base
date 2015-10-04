@@ -2142,7 +2142,7 @@
     <bool name="config_enable_mms_with_mobile_data_off">false</bool>
 
     <!-- User display names for app ops codes -->
-    <string-array name="app_ops_labels">
+		<!-- <string-array name="app_ops_labels">
         <item>Trying to access location</item>
         <item>Trying to access location</item>
         <item>Trying to access location</item>
@@ -2205,6 +2205,7 @@
         <item>Trying to turn on mobile data</item>
 
     </string-array>
+		-->
 
     <!-- Configuartion to set zen mode when silent mode is on -->
     <bool name="config_setZenModeWhenSilentModeOn">false</bool>
@@ -2369,4 +2370,9 @@
    <string name="operator_ping_url" translatable="false"></string>
    <!-- Zero Balance feature enable config -->
    <bool name="config_zero_balance_operator">false</bool>
+
+    <!-- Support in Surfaceflinger for blur layers.
+         NOTE: This requires additional hardware-specific code. -->
+    <bool name="config_ui_blur_enabled">false</bool>
+	 
 </resources>
