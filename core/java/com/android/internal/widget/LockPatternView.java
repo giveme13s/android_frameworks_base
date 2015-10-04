@@ -39,6 +39,7 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
 
 import com.android.internal.R;
+import com.android.internal.widget.LockPatternUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -107,6 +108,8 @@ public class LockPatternView extends View {
     private boolean mInStealthMode = false;
     private boolean mEnableHapticFeedback = true;
     private boolean mPatternInProgress = false;
+    private boolean mVisibleDots = true;
+    private boolean mShowErrorPath = true;
 
     private float mHitFactor = 0.6f;
 
@@ -124,6 +127,8 @@ public class LockPatternView extends View {
 
     private Interpolator mFastOutSlowInInterpolator;
     private Interpolator mLinearOutSlowInInterpolator;
+
+    private LockPatternUtils mLockPatternUtils;
 
     /**
      * Represents a cell in the 3 X 3 matrix of the unlock pattern view.
@@ -335,6 +340,22 @@ public class LockPatternView extends View {
         mInStealthMode = inStealthMode;
     }
 
+    public void setVisibleDots(boolean visibleDots) {
+        mVisibleDots = visibleDots;
+    }
+
+    public boolean isVisibleDots() {
+        return mVisibleDots;
+    }
+
+    public void setShowErrorPath(boolean showErrorPath) {
+        mShowErrorPath = showErrorPath;
+    }
+
+    public boolean isShowErrorPath() {
+        return mShowErrorPath;
+    }
+
     /**
      * Set whether the view will use tactile feedback.  If true, there will be
      * tactile feedback as the user enters the pattern.
@@ -343,6 +364,14 @@ public class LockPatternView extends View {
      */
     public void setTactileFeedbackEnabled(boolean tactileFeedbackEnabled) {
         mEnableHapticFeedback = tactileFeedbackEnabled;
+    }
+
+    /**
+     * Set the LockPatternUtil instance used to encode a pattern to a string
+     * @param utils The instance.
+     */
+    public void setLockPatternUtils(LockPatternUtils utils) {
+        mLockPatternUtils = utils;
     }
 
     /**

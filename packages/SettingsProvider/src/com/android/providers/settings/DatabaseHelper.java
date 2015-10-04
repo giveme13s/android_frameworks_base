@@ -79,7 +79,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // is properly propagated through your change.  Not doing so will result in a loss of user
     // settings.
 
-    private static final int DATABASE_VERSION = 117;
+    private static final int DATABASE_VERSION = 115;
 
     private static final String HEADSET = "_headset";
     private static final String SPEAKER = "_speaker";
@@ -693,6 +693,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                    Secure.LOCK_PATTERN_ENABLED,
                    Secure.LOCK_PATTERN_VISIBLE,
                    Secure.LOCK_PATTERN_TACTILE_FEEDBACK_ENABLED,
+                   Secure.LOCK_PASS_TO_SECURITY_VIEW,
+                   Secure.LOCK_PATTERN_SIZE,
+                   Secure.LOCK_DOTS_VISIBLE,
+                   Secure.LOCK_SHOW_ERROR_PATH,
                    "lockscreen.password_type",
                    "lockscreen.lockoutattemptdeadline",
                    "lockscreen.patterneverchosen",
@@ -1887,20 +1891,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 if (stmt != null) stmt.close();
             }
             upgradeVersion = 115;
-        }
-
-        if (upgradeVersion < 116) {
-            moveSettingsToNewTable(db, TABLE_SYSTEM, TABLE_SECURE,
-                    new String[] { Settings.Secure.VOLUME_LINK_NOTIFICATION }, true);
-            upgradeVersion = 116;
-        }
-
-        if (upgradeVersion < 117) {
-            String[] settingsToMove = Settings.Secure.NAVIGATION_RING_TARGETS;
-
-            moveSettingsToNewTable(db, TABLE_SYSTEM, TABLE_SECURE,
-                    settingsToMove, true);
-            upgradeVersion = 117;
         }
 
         // *** Remember to update DATABASE_VERSION above!
