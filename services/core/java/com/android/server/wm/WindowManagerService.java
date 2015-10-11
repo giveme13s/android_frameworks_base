@@ -159,6 +159,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.List;
 
 /** {@hide} */
@@ -223,12 +224,17 @@ public class WindowManagerService extends IWindowManager.Stub
     /**
      * Dim surface layer is immediately below target window.
      */
-    static final int LAYER_OFFSET_DIM = 1;
+    static final int LAYER_OFFSET_DIM = 1+1;
 
     /**
      * Blur surface layer is immediately below dim layer.
      */
-    static final int LAYER_OFFSET_BLUR = 2;
+    static final int LAYER_OFFSET_BLUR = 2+1;
+
+    /**
+      * Blur_with_masking layer is immediately below blur layer.
+      */
+    static final int LAYER_OFFSET_BLUR_WITH_MASKING = 1;
 
     /**
      * FocusedStackFrame layer is immediately above focused window.
@@ -304,7 +310,7 @@ public class WindowManagerService extends IWindowManager.Stub
     private static final String SIZE_OVERRIDE = "ro.config.size_override";
 
     private static final int MAX_SCREENSHOT_RETRIES = 3;
-    private static final int WINDOW_EXITING_TIME_OUT = 6000;
+    //private static final int WINDOW_EXITING_TIME_OUT = 6000;
 
     // The flag describing a full screen app window (where the app takes care of drawing under the
     // SystemUI bars)
@@ -5683,12 +5689,6 @@ public class WindowManagerService extends IWindowManager.Stub
         }
     }
 
-    /* @hide */
-     @Override
-    public void toggleGlobalMenu() {
-        mPolicy.toggleGlobalMenu();
-    }
-
     void dispatchNewAnimatorScaleLocked(Session session) {
         mH.obtainMessage(H.NEW_ANIMATOR_SCALE, session).sendToTarget();
     }
@@ -5706,6 +5706,126 @@ public class WindowManagerService extends IWindowManager.Stub
     @Override
     public void addSystemUIVisibilityFlag(int flags) {
         mLastStatusBarVisibility |= flags;
+    }
+    
+    private void moveTaskAndActivityToFront(int taskId) {
+        try {
+            moveTaskToTop(taskId);
+            mActivityManager.moveTaskToFront(taskId, 0, null);
+        } catch (RemoteException e) {
+            Log.e(TAG, "Cannot move the activity to front", e);
+        }
+    }
+
+    @Override
+    public void notifyFloatActivityTouched(IBinder token, boolean force) {
+        synchronized(mWindowMap) {
+              boolean changed = false;
+              if (token != null) {
+                  AppWindowToken newFocus = findAppWindowToken(token);
+                  if (newFocus == null) {
+                      Slog.w(TAG, "Attempted to set focus to non-existing app token: " + token);
+                      return;
+                  }
+                  changed = mFocusedApp != newFocus;
+                  mFocusedApp = newFocus;
+                  if (changed || force) {
+                      if (DEBUG_FOCUS) Slog.v(TAG, "Changed app focus to " + token);
+                      mInputMonitor.setFocusedAppLw(newFocus);
+                  }
+              }
+
+              if (changed || force) {
+                  final long origId = Binder.clearCallingIdentity();
+                  updateFocusedWindowLocked(UPDATE_FOCUS_NORMAL, true);
+                  mH.removeMessages(H.REPORT_FOCUS_CHANGE);
+                  mH.sendEmptyMessage(H.REPORT_FOCUS_CHANGE);
+                  Binder.restoreCallingIdentity(origId);
+              }
+       }
+
+       if (!force) {
+           final long origId = Binder.clearCallingIdentity();
+           try {
+                int taskId = mActivityManager.getTaskForActivity(token, false);
+                moveTaskAndActivityToFront(taskId);
+           } catch (RemoteException e) {
+                Log.e(TAG, "Cannot move the activity to front", e);
+           }
+           Binder.restoreCallingIdentity(origId);
+       }
+    }
+
+    @Override
+    public Rect getAppFullscreenViewRect() {
+        final DisplayContent displayContent = getDefaultDisplayContentLocked();
+        final boolean rotated = (mRotation == Surface.ROTATION_90
+                || mRotation == Surface.ROTATION_270);
+        final int realdw = rotated ?
+                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
+        final int realdh = rotated ?
+                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
+
+        int dw = realdw;
+        int dh = realdh;
+
+        // Get application display metrics.
+        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
+        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
+
+        return new Rect(0, 0, appWidth, appHeight);
+    }
+
+    @Override
+    public Rect getAppMinimumViewRect() {
+        final DisplayContent displayContent = getDefaultDisplayContentLocked();
+        final boolean rotated = (mRotation == Surface.ROTATION_90
+                || mRotation == Surface.ROTATION_270);
+        final int realdw = rotated ?
+                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
+        final int realdh = rotated ?
+                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
+
+        int dw = realdw;
+        int dh = realdh;
+
+        // Get application display metrics.
+        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
+        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
+
+        return new Rect(0, 0, (int)(appWidth * 0.5f) , (int)(appHeight * 0.5f));
+    }
+
+    @Override
+    public Rect getFloatViewRect() {
+        final DisplayContent displayContent = getDefaultDisplayContentLocked();
+        final boolean rotated = (mRotation == Surface.ROTATION_90
+                || mRotation == Surface.ROTATION_270);
+        final int realdw = rotated ?
+                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
+        final int realdh = rotated ?
+                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
+        final boolean nativeLandscape =
+                (displayContent.mBaseDisplayHeight < displayContent.mBaseDisplayWidth);
+
+        int dw = realdw;
+        int dh = realdh;
+
+        // Get application display metrics.
+        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
+        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
+
+        if (nativeLandscape ^ rotated) {
+            return new Rect(0, 0, (int)(appWidth * 0.7f), (int)(appHeight * 0.9f));
+        } else {
+            return new Rect(0, 0, (int)(appWidth * 0.9f) , (int)(appHeight * 0.7f));
+        }
+    }    
+
+    /* @hide */
+    @Override
+    public void toggleGlobalMenu() {
+        mPolicy.toggleGlobalMenu();
     }
 
     // Called by window manager policy. Not exposed externally.
@@ -6399,6 +6519,12 @@ public class WindowManagerService extends IWindowManager.Stub
                 // Constrain frame to the screen size.
                 frame.intersect(0, 0, dw, dh);
 
+                // use the whole frame if width and height are not constrained
+                if (width == -1 && height == -1) {
+                    width = frame.width();
+                    height = frame.height();
+                }
+
                 // Tell surface flinger what part of the image to crop. Take the top
                 // right part of the application, and crop the larger dimension to fit.
                 Rect crop = new Rect(frame);
@@ -6612,9 +6738,9 @@ public class WindowManagerService extends IWindowManager.Stub
             return false;
         }
 
-        if(SystemService.isRunning("bootanim")) {
-            return false;
-        }
+        //if(SystemService.isRunning("bootanim")) {
+            //return false;
+        //}
 
         ScreenRotationAnimation screenRotationAnimation =
                 mAnimator.getScreenRotationAnimationLocked(Display.DEFAULT_DISPLAY);
@@ -8636,6 +8762,10 @@ public class WindowManagerService extends IWindowManager.Stub
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
+        try {
+            ActivityManagerNative.getDefault().restart();
+        } catch (RemoteException e) {
+        }
     }
 
     // displayContent must not be null
@@ -8672,6 +8802,10 @@ public class WindowManagerService extends IWindowManager.Stub
             }
         } finally {
             Binder.restoreCallingIdentity(ident);
+        }
+        try {
+            ActivityManagerNative.getDefault().restart();
+        } catch (RemoteException e) {
         }
     }
 
@@ -8930,7 +9064,7 @@ public class WindowManagerService extends IWindowManager.Stub
                 anyLayerChanged = true;
             }
             final TaskStack stack = w.getStack();
-            if (layerChanged && stack != null && stack.isDimming(winAnimator)) {
+            if (layerChanged && stack != null && (stack.isDimming(winAnimator) || stack.isBlurring(winAnimator))) {
                 // Force an animation pass just to update the mDimLayer layer.
                 scheduleAnimationLocked();
             }
@@ -9824,6 +9958,31 @@ public class WindowManagerService extends IWindowManager.Stub
         winAnimator.updateFullyTransparent(attrs);
     }
 
+    private void handleFlagBlurBehind(WindowState w) {
+        final WindowManager.LayoutParams attrs = w.mAttrs;
+        if ((attrs.flags & FLAG_BLUR_BEHIND) != 0
+                && w.isDisplayedLw()
+                && !w.mExiting) {
+            final WindowStateAnimator winAnimator = w.mWinAnimator;
+            final TaskStack stack = w.getStack();
+            if (stack == null) {
+                return;
+            }
+            stack.setBlurringTag();
+            if (!stack.isBlurring(winAnimator)) {
+                if (localLOGV) Slog.v(TAG, "Win " + w + " start blurring");
+                stack.startBlurringIfNeeded(winAnimator);
+            }
+        }
+    }
+
+    private void handlePrivateFlagBlurWithMasking(WindowState w) {
+        final WindowManager.LayoutParams attrs = w.mAttrs;
+        boolean hideForced = !w.isDisplayedLw() || w.mExiting;
+        final WindowStateAnimator winAnimator = w.mWinAnimator;
+        winAnimator.updateBlurWithMaskingState(attrs, hideForced);
+    }
+
     private void updateAllDrawnLocked(DisplayContent displayContent) {
         // See if any windows have been drawn, so they (and others
         // associated with them) can now be shown.
@@ -10004,6 +10163,7 @@ public class WindowManagerService extends IWindowManager.Stub
                 mInnerFields.mObscured = false;
                 mInnerFields.mSyswin = false;
                 displayContent.resetDimming();
+                displayContent.resetBlurring();
 
                 // Only used if default window
                 final boolean someoneLosingFocus = !mLosingFocus.isEmpty();
@@ -10011,11 +10171,6 @@ public class WindowManagerService extends IWindowManager.Stub
                 final int N = windows.size();
                 for (i=N-1; i>=0; i--) {
                     WindowState w = windows.get(i);
-		    if(w.mExiting && (w.mLastFreezeDuration > WINDOW_EXITING_TIME_OUT)
-                        && w.mInputChannel == null) {
-                        removeWindowInnerLocked(w.mSession, w);
-                    }
-
                     final TaskStack stack = w.getStack();
                     if (stack == null && w.getAttrs().type != TYPE_PRIVATE_PRESENTATION) {
                         continue;
@@ -10034,6 +10189,11 @@ public class WindowManagerService extends IWindowManager.Stub
                     }
 
                     handlePrivateFlagFullyTransparent(w);
+
+                    if (stack != null && !stack.testBlurringTag()) {
+                        handleFlagBlurBehind(w);
+                    }
+                    handlePrivateFlagBlurWithMasking(w);
 
                     if (isDefaultDisplay && obscuredChanged && (mWallpaperTarget == w)
                             && w.isVisibleLw()) {
@@ -10170,6 +10330,7 @@ public class WindowManagerService extends IWindowManager.Stub
                         true /* inTraversal, must call performTraversalInTrans... below */);
 
                 getDisplayContentLocked(displayId).stopDimmingIfNeeded();
+                getDisplayContentLocked(displayId).stopBlurringIfNeeded();
 
                 if (updateAllDrawn) {
                     updateAllDrawnLocked(displayContent);
@@ -10824,8 +10985,16 @@ public class WindowManagerService extends IWindowManager.Stub
 
             if (DEBUG_FOCUS_LIGHT) Slog.v(TAG, "findFocusedWindow: Found new focus @ " + i +
                         " = " + win);
-            return win;
-        }
+
+            // Dispatch to this window if it is wants key events.
+            if (win.canReceiveKeys()) {
+                if (mFocusedApp != null) {
+                    return win;
+                } else {
+                    return win;
+                }
+            }
+		}
 
         if (DEBUG_FOCUS_LIGHT) Slog.v(TAG, "findFocusedWindow: No focusable windows.");
         return null;

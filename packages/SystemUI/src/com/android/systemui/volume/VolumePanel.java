@@ -109,8 +109,8 @@ public class VolumePanel extends Handler implements DemoMode {
     private static final int TIMEOUT_DELAY_COLLAPSED = 4500;
     private static final int TIMEOUT_DELAY_SAFETY_WARNING = 5000;
     private static final int TIMEOUT_DELAY_EXPANDED = 10000;
-    private static final int ANIMATION_DURATION = 250;
     private static final int TIMEOUT_DELAY_VOL_PANEL = 3000;
+    private static final int ANIMATION_DURATION = 300; // ms
 
     private static final int MSG_VOLUME_CHANGED = 0;
     private static final int MSG_FREE_RESOURCES = 1;
@@ -395,64 +395,58 @@ public class VolumePanel extends Handler implements DemoMode {
             arr.recycle();
         }
 
-        if (parent == null) {
             mDialog = new Dialog(context) {
                 @Override
                 public boolean onTouchEvent(MotionEvent event) {
                     if (isShowing() && event.getAction() == MotionEvent.ACTION_OUTSIDE &&
                             sSafetyWarning == null) {
-                    forceTimeout(0);
-                    return true;
+                        forceTimeout(0);
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
         };
 
         final Window window = mDialog.getWindow();
-            window.requestFeature(Window.FEATURE_NO_TITLE);
-            mDialog.setCanceledOnTouchOutside(true);
-            mDialog.setContentView(com.android.systemui.R.layout.volume_dialog);
-            mDialog.setOnDismissListener(new OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    mActiveStreamType = -1;
-                    mAudioManager.forceVolumeControlStream(mActiveStreamType);
-                    setZenPanelVisible(false);
-                    mDemoIcon = 0;
-                }
-            });
+        window.requestFeature(Window.FEATURE_NO_TITLE);
+        mDialog.setCanceledOnTouchOutside(true);
+        mDialog.setContentView(com.android.systemui.R.layout.volume_dialog);
+        mDialog.setOnDismissListener(new OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                mActiveStreamType = -1;
+                mAudioManager.forceVolumeControlStream(mActiveStreamType);
+                setZenPanelVisible(false);
+                mDemoIcon = 0;
+            }
+        });
 
-            mDialog.create();
+        mDialog.create();
 
-            final LayoutParams lp = window.getAttributes();
-            lp.token = null;
-            lp.y = res.getDimensionPixelOffset(com.android.systemui.R.dimen.volume_panel_top);
-            lp.type = LayoutParams.TYPE_STATUS_BAR_PANEL;
-            lp.format = PixelFormat.TRANSLUCENT;
-            lp.windowAnimations = com.android.systemui.R.style.VolumePanelAnimation;
-            lp.setTitle(TAG);
-            window.setAttributes(lp);
+        final LayoutParams lp = window.getAttributes();
+        lp.token = null;
+        lp.y = res.getDimensionPixelOffset(com.android.systemui.R.dimen.volume_panel_top);
+        lp.type = LayoutParams.TYPE_STATUS_BAR_PANEL;
+        lp.format = PixelFormat.TRANSLUCENT;
+        lp.windowAnimations = com.android.systemui.R.style.VolumePanelAnimation;
+        lp.setTitle(TAG);
+        window.setAttributes(lp);
 
-            updateWidth();
+        updateWidth();
 
-            window.setBackgroundDrawable(new ColorDrawable(0x00000000));
-            window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            window.addFlags(LayoutParams.FLAG_NOT_FOCUSABLE
-                    | LayoutParams.FLAG_NOT_TOUCH_MODAL
-                    | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                    | LayoutParams.FLAG_HARDWARE_ACCELERATED);
-            mView = window.findViewById(R.id.content);
-            Interaction.register(mView, new Interaction.Callback() {
-                @Override
-                public void onInteraction() {
+        window.setBackgroundDrawable(new ColorDrawable(0x00000000));
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        window.addFlags(LayoutParams.FLAG_NOT_FOCUSABLE
+                | LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                | LayoutParams.FLAG_HARDWARE_ACCELERATED);
+        mView = window.findViewById(R.id.content);
+        Interaction.register(mView, new Interaction.Callback() {
+            @Override
+            public void onInteraction() {
                 resetVolPanelTimeout();
-                }
-            });
-        } else {
-            mDialog = null;
-            mView = LayoutInflater.from(mContext).inflate(
-                    com.android.systemui.R.layout.volume_panel, parent, false);
-        }
+            }
+        });
 
         mPanel = (ViewGroup) mView.findViewById(com.android.systemui.R.id.visible_panel);
         mSliderPanel = (ViewGroup) mView.findViewById(com.android.systemui.R.id.slider_panel);
